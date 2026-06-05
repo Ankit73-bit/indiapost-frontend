@@ -48,7 +48,7 @@ interface SyncJobStatusBadgeProps {
 }
 
 export function SyncJobStatusBadge({ status, className }: SyncJobStatusBadgeProps) {
-  const config = SYNC_JOB_STATUS_CONFIG[status] ?? SYNC_JOB_STATUS_CONFIG.pending;
+  const config = SYNC_JOB_STATUS_CONFIG[status] ?? SYNC_JOB_STATUS_CONFIG.QUEUED;
   return (
     <span
       className={cn(

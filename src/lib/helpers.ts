@@ -57,11 +57,11 @@ export const LIST_STATUS_CONFIG = {
 };
 
 export const SYNC_JOB_STATUS_CONFIG = {
-  pending: { label: 'Pending', color: 'bg-gray-100 text-gray-600 border-gray-200' },
-  running: { label: 'Running', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  completed: { label: 'Completed', color: 'bg-green-100 text-green-700 border-green-200' },
-  failed: { label: 'Failed', color: 'bg-red-100 text-red-700 border-red-200' },
-  partial: { label: 'Partial', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  QUEUED:    { label: 'Queued',    color: 'bg-gray-100 text-gray-600 border-gray-200' },
+  RUNNING:   { label: 'Running',   color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  COMPLETED: { label: 'Completed', color: 'bg-green-100 text-green-700 border-green-200' },
+  FAILED:    { label: 'Failed',    color: 'bg-red-100 text-red-700 border-red-200' },
+  PARTIAL:   { label: 'Partial',   color: 'bg-orange-100 text-orange-700 border-orange-200' },
 };
 
 // ─── Date formatting ──────────────────────────────────────────────────────────

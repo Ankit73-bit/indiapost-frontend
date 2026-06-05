@@ -290,7 +290,7 @@ export interface ListArticlesQuery {
 
 // ─── Sync ─────────────────────────────────────────────────────────────────────
 
-export type SyncJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'partial';
+export type SyncJobStatus = 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED' | 'PARTIAL';
 
 export interface SyncBatch {
   batchNumber: number;
@@ -307,16 +307,17 @@ export interface SyncJob {
   _id: string;
   clientId: string;
   listId?: string;
-  triggeredBy: 'manual' | 'cron' | 'retry';
-  triggeredByUserId?: string;
+  type: 'MANUAL' | 'SCHEDULED' | 'RETRY' | 'PARTIAL';
+  triggeredBy: string;
   status: SyncJobStatus;
   totalArticles: number;
+  totalBatches: number;
   processedCount: number;
   failedCount: number;
-  batches?: SyncBatch[];
+  skippedCount: number;
   startedAt?: string;
   completedAt?: string;
-  error?: string;
+  durationMs?: number;
   createdAt: string;
   updatedAt: string;
 }
