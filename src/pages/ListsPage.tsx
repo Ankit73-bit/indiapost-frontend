@@ -122,15 +122,26 @@ export function ListsPage() {
     }
   }
 
-  function handleExport(listId: string) {
-    const token = localStorage.getItem('ip_token');
-    const url = `${import.meta.env.VITE_API_URL ?? 'http://localhost:5000'}/api/v1/lists/${listId}/export`;
-    const a = document.createElement('a');
-    a.href = url;
-    // Token passed via query not ideal — but works without a proxy for now
-    // TODO: move to a fetch+blob approach when proper auth is in place
-    a.setAttribute('download', '');
-    a.click();
+  const [exportingListId, setExportingListId] = useState<string | null>(null);
+
+  async function handleExport(listId: string, listName: string) {
+    setExportingListId(listId);
+    try {
+      const token = localStorage.getItem('ip_token');
+      const url = `${import.meta.env.VITE_API_URL ?? 'http://localhost:5000'}/api/v1/lists/${listId}/export`;
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${listName.replace(/[^a-z0-9]/gi, '_')}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } finally {
+      setExportingListId(null);
+    }
   }
 
   return (
@@ -264,9 +275,14 @@ export function ListsPage() {
                       variant="ghost"
                       size="sm"
                       className="h-7 w-7 p-0"
-                      onClick={() => handleExport(list._id)}
+                      disabled={exportingListId === list._id}
+                      onClick={() => handleExport(list._id, list.name)}
                     >
-                      <Download className="h-3.5 w-3.5" />
+                      {exportingListId === list._id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5" />
+                      )}
                     </Button>
                     {/* Edit */}
                     <Button

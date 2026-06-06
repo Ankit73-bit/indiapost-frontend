@@ -9,9 +9,18 @@ import { ListsPage }     from '@/pages/ListsPage';
 import { ArticlesPage }  from '@/pages/ArticlesPage';
 import { SyncPage }      from '@/pages/SyncPage';
 import { UsersPage }     from '@/pages/UsersPage';
+import { ProfilePage }   from '@/pages/ProfilePage';
 
 // Admin-only guard
 function AdminRoute({ children }: { children: React.ReactNode }) {
+  const user = store.getState().auth.user;
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role !== 'admin') return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+// Admin-only guard (redirects customers away from sync)
+function SyncRoute({ children }: { children: React.ReactNode }) {
   const user = store.getState().auth.user;
   if (!user) return <Navigate to="/login" replace />;
   if (user.role !== 'admin') return <Navigate to="/" replace />;
@@ -30,7 +39,8 @@ export default function App() {
             <Route index element={<DashboardPage />} />
             <Route path="lists"    element={<ListsPage />} />
             <Route path="articles" element={<ArticlesPage />} />
-            <Route path="sync"     element={<SyncPage />} />
+            <Route path="profile"  element={<ProfilePage />} />
+            <Route path="sync"     element={<SyncRoute><SyncPage /></SyncRoute>} />
 
             {/* Admin-only */}
             <Route path="clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />

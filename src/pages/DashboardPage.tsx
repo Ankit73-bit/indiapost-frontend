@@ -60,7 +60,7 @@ export function DashboardPage() {
   );
   const { data: statsData }   = useGetArticleStatsQuery(
     customerClientId ?? '',
-    { skip: !customerClientId && isAdmin },
+    { skip: !customerClientId },
   );
   const { data: recentJobs }  = useListSyncJobsQuery({ page: 1, limit: 5 });
   const { data: failedData }  = useListFailedArticlesQuery(
@@ -100,8 +100,9 @@ export function DashboardPage() {
         {statsData && (
           <StatCard
             label="Total Articles"
-            value={statsData.total.toLocaleString()}
+            value={statsData.totalArticles.toLocaleString()}
             icon={Package}
+            sub={`${statsData.deliveryRate}% delivered`}
             onClick={() => navigate('/articles' + (customerClientId ? `?clientId=${customerClientId}` : ''))}
           />
         )}
@@ -118,14 +119,14 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* ── Article status breakdown ── */}
-        {statsData && statsData.total > 0 && (
+        {statsData && statsData.totalArticles > 0 && (
           <div className="rounded-lg border border-border bg-card p-4">
             <h2 className="mb-3 text-sm font-semibold">Article Status Breakdown</h2>
             <div className="space-y-2">
               {Object.entries(statsData.byStatus)
                 .sort(([, a], [, b]) => (b ?? 0) - (a ?? 0))
                 .map(([status, count]) => {
-                  const pct = statsData.total > 0 ? Math.round(((count ?? 0) / statsData.total) * 100) : 0;
+                  const pct = statsData.totalArticles > 0 ? Math.round(((count ?? 0) / statsData.totalArticles) * 100) : 0;
                   return (
                     <div key={status} className="flex items-center gap-3">
                       <ArticleStatusBadge status={status as NormalizedStatus} className="w-32 justify-center" />
@@ -225,7 +226,7 @@ export function DashboardPage() {
                         </span>
                       </td>
                       <td className="py-2.5 text-right font-mono text-xs">
-                        {list.totalArticles.toLocaleString()}
+                        {(list.totalArticles ?? 0).toLocaleString()}
                       </td>
                       <td className="py-2.5 text-right font-mono text-xs">
                         {delivered.toLocaleString()} <span className="text-muted-foreground">({pct}%)</span>

@@ -12,6 +12,7 @@ function parseJwtPayload(token: string): AuthUser | null {
     return {
       id:       payload.sub as string,
       email:    payload.email as string,
+      name:     payload.name as string | undefined,
       role:     payload.role as AuthUser['role'],
       clientId: (payload.clientId as string | null) ?? null,
     };
@@ -37,6 +38,11 @@ const authSlice = createSlice({
       state.user  = parseJwtPayload(token);
       localStorage.setItem('ip_token', token);
     },
+    updateUser(state, action: PayloadAction<{ name?: string }>) {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+      }
+    },
     clearCredentials(state) {
       state.token = null;
       state.user  = null;
@@ -45,5 +51,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, clearCredentials } = authSlice.actions;
+export const { setCredentials, updateUser, clearCredentials } = authSlice.actions;
 export default authSlice.reducer;

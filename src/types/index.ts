@@ -5,6 +5,7 @@ export type UserRole = 'admin' | 'customer';
 export interface AuthUser {
   id: string;
   email: string;
+  name?: string;
   role: UserRole;
   clientId: string | null; // null for admins
 }
@@ -263,8 +264,11 @@ export interface Article {
 }
 
 export interface ArticleStats {
-  total: number;
-  byStatus: Partial<Record<NormalizedStatus, number>>;
+  totalArticles: number;
+  terminalCount: number;
+  deliveryRate: number;
+  byStatus: Record<string, number>;
+  lastSyncedAt?: string | null;
 }
 
 export interface TrackingEvent {

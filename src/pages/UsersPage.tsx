@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Loader2, UserCheck, UserX, Link2 } from 'lucide-react';
+import { Plus, Loader2, UserCheck, UserX, Link2, Pencil } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -37,7 +38,7 @@ const registerSchema = z.object({
   email:    z.string().email('Enter a valid email'),
   password: z.string().min(8, 'Min 8 characters'),
   role:     z.enum(['admin', 'customer']),
-  name:     z.string().optional(),
+  name:     z.string().min(1, 'Name is required'),
   clientId: z.string().optional(),
 });
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -102,8 +103,9 @@ function RegisterUserDialog({
               {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
             </div>
             <div className="space-y-1.5">
-              <Label>Name <span className="text-muted-foreground">(optional)</span></Label>
+              <Label>Name</Label>
               <Input placeholder="Full name" {...register('name')} />
+              {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-1.5">
               <Label>Role</Label>
@@ -218,6 +220,7 @@ function UserRow({
   clientOptions: { _id: string; name: string }[];
   currentUserId: string;
 }) {
+  const navigate = useNavigate();
   const [assignOpen, setAssignOpen] = useState(false);
   const [deactivate] = useDeactivateUserMutation();
   const [reactivate] = useReactivateUserMutation();
@@ -259,6 +262,14 @@ function UserRow({
                 <Link2 className="h-3.5 w-3.5" />
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0"
+              onClick={() => navigate(`/profile?userId=${user.id}`)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
             {user.isActive ? (
               <Button
                 variant="ghost"

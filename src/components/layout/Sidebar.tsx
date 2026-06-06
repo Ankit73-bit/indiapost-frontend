@@ -8,18 +8,19 @@ import {
   LogOut,
   Mail,
   UserCog,
+  UserCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { clearCredentials } from '@/store/authSlice';
 
 const NAV_ITEMS = [
-  { to: '/',         label: 'Dashboard', icon: LayoutDashboard, end: true,  adminOnly: false },
-  { to: '/clients',  label: 'Clients',   icon: Users,           end: false, adminOnly: true  },
-  { to: '/lists',    label: 'Lists',     icon: List,            end: false, adminOnly: false },
-  { to: '/articles', label: 'Articles',  icon: Package,         end: false, adminOnly: false },
-  { to: '/sync',     label: 'Sync',      icon: RefreshCw,       end: false, adminOnly: false },
-  { to: '/users',    label: 'Users',     icon: UserCog,         end: false, adminOnly: true  },
+  { to: '/',         label: 'Dashboard', icon: LayoutDashboard, end: true,  adminOnly: false, customerHide: false },
+  { to: '/clients',  label: 'Clients',   icon: Users,           end: false, adminOnly: true,  customerHide: false },
+  { to: '/lists',    label: 'Lists',     icon: List,            end: false, adminOnly: false, customerHide: false },
+  { to: '/articles', label: 'Articles',  icon: Package,         end: false, adminOnly: false, customerHide: false },
+  { to: '/sync',     label: 'Sync',      icon: RefreshCw,       end: false, adminOnly: false, customerHide: true  },
+  { to: '/users',    label: 'Users',     icon: UserCog,         end: false, adminOnly: true,  customerHide: false },
 ];
 
 export function Sidebar() {
@@ -33,6 +34,8 @@ export function Sidebar() {
     navigate('/login');
   }
 
+  const displayName = user?.name || user?.email || '';
+
   return (
     <aside className="flex h-screen w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
       {/* Logo */}
@@ -45,8 +48,10 @@ export function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
-        {NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map(
-          ({ to, label, icon: Icon, end }) => (
+        {NAV_ITEMS
+          .filter((item) => !item.adminOnly || isAdmin)
+          .filter((item) => !item.customerHide || isAdmin)
+          .map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}
@@ -63,21 +68,22 @@ export function Sidebar() {
               <Icon className="h-4 w-4 shrink-0" />
               {label}
             </NavLink>
-          ),
-        )}
+          ))
+        }
       </nav>
 
       {/* User + Logout */}
       <div className="border-t border-sidebar-border px-3 py-3">
-        <div className="mb-2 px-1">
-          <p className="truncate text-xs font-medium text-sidebar-foreground">{user?.email}</p>
-          <p className="text-xs capitalize text-muted-foreground">{user?.role}</p>
-          {user?.clientId && (
-            <p className="mt-0.5 truncate font-mono text-xs text-muted-foreground">
-              {user.clientId.slice(-8)}
-            </p>
-          )}
-        </div>
+        <button
+          onClick={() => navigate('/profile')}
+          className="mb-2 flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/60"
+        >
+          <UserCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-sidebar-foreground">{displayName}</p>
+            <p className="truncate text-xs capitalize text-muted-foreground">{user?.role}</p>
+          </div>
+        </button>
         <button
           onClick={handleLogout}
           className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
