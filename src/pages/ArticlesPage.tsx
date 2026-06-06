@@ -466,6 +466,19 @@ function ListContextBar({
   );
 }
 
+function buildSearchPlaceholder(
+  hasLoanAccount: boolean,
+  hasCustomerId: boolean,
+): string {
+  const fields = ['article number', 'recipient'];
+  if (hasLoanAccount) fields.push('loan A/C');
+  if (hasCustomerId) fields.push('customer ID');
+  const last = fields.pop()!;
+  return fields.length > 0
+    ? `Search ${fields.join(', ')} or ${last}…`
+    : `Search ${last}…`;
+}
+
 // ─── List articles view (remounts when client/list changes) ───────────────────
 
 function ArticlesListView({
@@ -518,6 +531,10 @@ function ArticlesListView({
   const statusLabel = statusFilter
     ? (STATUS_CONFIG[statusFilter]?.label ?? statusFilter)
     : 'All Statuses';
+  const searchPlaceholder = buildSearchPlaceholder(
+    Boolean(hasLoanAccount),
+    Boolean(hasCustomerId),
+  );
 
   return (
     <>
@@ -533,14 +550,14 @@ function ArticlesListView({
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search article number or recipient…"
+            placeholder={searchPlaceholder}
             className="pl-8"
             value={searchInput}
             onChange={(e) => {
               setSearchInput(e.target.value);
               setPage(1);
             }}
-            aria-label="Search articles"
+            aria-label={searchPlaceholder}
           />
           {isFetching && !isLoading && (
             <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
