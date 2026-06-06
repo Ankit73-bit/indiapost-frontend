@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -10,6 +10,10 @@ import {
   Package,
   AlertCircle,
   Filter,
+  Phone,
+  Mail,
+  MapPin,
+  Truck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,9 +27,11 @@ import {
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +60,66 @@ import type { Article, NormalizedStatus } from '@/types';
 
 // ─── Article detail sheet ─────────────────────────────────────────────────────
 
+function DetailSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-2">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </h3>
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
+        {children}
+      </div>
+    </section>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: React.ReactNode;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-b border-border/50 px-3 py-2.5 text-sm last:border-0">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <span
+        className={cn(
+          'min-w-0 text-right',
+          mono && 'font-mono text-xs break-all',
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function RecipientLine({
+  icon: Icon,
+  children,
+}: {
+  icon: React.ElementType;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2.5 px-3 py-2 text-sm">
+      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <span className="min-w-0 wrap-break-word text-muted-foreground">
+        {children}
+      </span>
+    </div>
+  );
+}
+
 function ArticleSheet({
   article,
   onClose,
@@ -70,180 +136,261 @@ function ArticleSheet({
     clientId: article.clientId,
   });
 
+  const { recipient, bookingDetails } = article;
+  const attributeEntries = Object.entries(article.attributes ?? {});
+  const hasAddress = Boolean(
+    recipient.addressLine1 ||
+      recipient.addressLine2 ||
+      recipient.city ||
+      recipient.state ||
+      recipient.pincode,
+  );
+  const hasBookingDetails = Boolean(
+    bookingDetails?.articleType ||
+      bookingDetails?.originPincode ||
+      bookingDetails?.destinationPincode ||
+      bookingDetails?.tariff !== undefined ||
+      article.deliveredAt,
+  );
+  const events = eventsData?.data ?? [];
+
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader className="mb-4">
-          <SheetTitle className="font-mono text-base break-all">
-            {article.articleNumber}
-          </SheetTitle>
-        </SheetHeader>
-
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <ArticleStatusBadge status={article.normalizedStatus} />
-          {article.isTerminal && (
-            <span className="rounded border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-              Terminal
-            </span>
-          )}
-        </div>
-
-        <section className="mb-4">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Recipient
-          </h3>
-          <div className="rounded-lg border border-border bg-muted/20 px-3 py-2.5 space-y-0.5 text-sm">
-            <p className="font-medium">{article.recipient.name}</p>
-            {article.recipient.mobile && (
-              <p className="text-muted-foreground">
-                {article.recipient.mobile}
-              </p>
-            )}
-            {article.recipient.email && (
-              <p className="text-muted-foreground">{article.recipient.email}</p>
-            )}
-            {article.recipient.addressLine1 && (
-              <p className="text-muted-foreground">
-                {article.recipient.addressLine1}
-              </p>
-            )}
-            {article.recipient.addressLine2 && (
-              <p className="text-muted-foreground">
-                {article.recipient.addressLine2}
-              </p>
-            )}
-            {(article.recipient.city ||
-              article.recipient.state ||
-              article.recipient.pincode) && (
-              <p className="text-muted-foreground">
-                {[
-                  article.recipient.city,
-                  article.recipient.state,
-                  article.recipient.pincode,
-                ]
-                  .filter(Boolean)
-                  .join(', ')}
-              </p>
+      <SheetContent className="flex h-full w-full flex-col gap-0 p-0 sm:max-w-md">
+        {/* Header */}
+        <SheetHeader className="shrink-0 space-y-3 border-b border-border px-4 py-4 pr-12">
+          <div className="space-y-1">
+            <SheetDescription>Article details</SheetDescription>
+            <SheetTitle className="font-mono text-base leading-snug break-all">
+              {article.articleNumber}
+            </SheetTitle>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <ArticleStatusBadge status={article.normalizedStatus} />
+            {article.isTerminal && (
+              <span className="rounded border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                Terminal
+              </span>
             )}
           </div>
-        </section>
+        </SheetHeader>
 
-        {article.bookingDetails && (
-          <section className="mb-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Booking Details
-            </h3>
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
-              {article.bookingDetails.articleType && (
-                <>
-                  <dt className="text-muted-foreground">Type</dt>
-                  <dd>{article.bookingDetails.articleType}</dd>
-                </>
-              )}
-              {article.bookingDetails.originPincode && (
-                <>
-                  <dt className="text-muted-foreground">Origin PIN</dt>
-                  <dd className="font-mono">
-                    {article.bookingDetails.originPincode}
-                  </dd>
-                </>
-              )}
-              {article.bookingDetails.destinationPincode && (
-                <>
-                  <dt className="text-muted-foreground">Dest PIN</dt>
-                  <dd className="font-mono">
-                    {article.bookingDetails.destinationPincode}
-                  </dd>
-                </>
-              )}
-              {article.bookingDetails.tariff !== undefined && (
-                <>
-                  <dt className="text-muted-foreground">Tariff</dt>
-                  <dd>₹{article.bookingDetails.tariff}</dd>
-                </>
-              )}
-              {article.deliveredAt && (
-                <>
-                  <dt className="text-muted-foreground">Delivered At</dt>
-                  <dd>{formatDateTime(article.deliveredAt)}</dd>
-                </>
-              )}
-            </dl>
-          </section>
-        )}
-
-        {article.attributes && Object.keys(article.attributes).length > 0 && (
-          <section className="mb-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Attributes
-            </h3>
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
-              {Object.entries(article.attributes).map(([k, v]) => (
-                <Fragment key={k}>
-                  <dt className="text-muted-foreground capitalize">
-                    {k.replace(/_/g, ' ')}
-                  </dt>
-                  <dd className="font-mono text-xs break-all">{v}</dd>
-                </Fragment>
-              ))}
-            </dl>
-          </section>
-        )}
-
-        <section>
-          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Tracking Events
-          </h3>
-          {isLoading && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Loading events…
+        {/* Scrollable body */}
+        <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
+          {article.latestEvent && (
+            <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-3">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
+                <Truck className="h-3.5 w-3.5" />
+                Latest update
+              </div>
+              <p className="mt-1.5 text-sm font-medium leading-snug">
+                {article.latestEvent.rawEvent}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {article.latestEvent.office}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {formatDateTime(article.latestEvent.eventDate)}
+              </p>
             </div>
           )}
-          {isError && (
-            <p className="text-sm text-destructive">Failed to load events.</p>
-          )}
-          {!isLoading && !isError && eventsData?.data.length === 0 && (
-            <p className="text-sm text-muted-foreground">No events yet.</p>
-          )}
-          {!isLoading && !isError && (eventsData?.data.length ?? 0) > 0 && (
-            <ol className="space-y-0">
-              {eventsData?.data.map((event, index) => (
-                <li key={event._id} className="relative pl-6 pb-5 last:pb-0">
-                  {index < (eventsData?.data.length ?? 0) - 1 && (
-                    <span
-                      className="absolute left-[4.5px] top-3 bottom-0 w-px bg-border"
-                      aria-hidden
-                    />
-                  )}
-                  <span
-                    className="absolute left-0 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background"
-                    aria-hidden
-                  />
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">{event.rawEvent}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {event.office}
-                      </p>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <ArticleStatusBadge status={event.normalizedStatus} />
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {formatDateTime(event.eventDate)}
-                      </p>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
 
-        <div className="mt-6 border-t border-border pt-3 text-xs text-muted-foreground space-y-1">
-          <p>Sync attempts: {article.syncAttempts}</p>
-          <p>Last synced: {formatDateTime(article.lastSyncedAt)}</p>
-          <p>Added: {formatDateTime(article.createdAt)}</p>
+          <DetailSection title="Recipient">
+            <p className="border-b border-border/50 px-3 py-2.5 text-sm font-medium">
+              {recipient.name}
+            </p>
+            {recipient.mobile && (
+              <RecipientLine icon={Phone}>{recipient.mobile}</RecipientLine>
+            )}
+            {recipient.email && (
+              <RecipientLine icon={Mail}>{recipient.email}</RecipientLine>
+            )}
+            {hasAddress ? (
+              <RecipientLine icon={MapPin}>
+                <span className="block space-y-0.5">
+                  {recipient.addressLine1 && (
+                    <span className="block">{recipient.addressLine1}</span>
+                  )}
+                  {recipient.addressLine2 && (
+                    <span className="block">{recipient.addressLine2}</span>
+                  )}
+                  {(recipient.city ||
+                    recipient.state ||
+                    recipient.pincode) && (
+                    <span className="block">
+                      {[recipient.city, recipient.state, recipient.pincode]
+                        .filter(Boolean)
+                        .join(', ')}
+                    </span>
+                  )}
+                </span>
+              </RecipientLine>
+            ) : (
+              !recipient.mobile &&
+              !recipient.email && (
+                <p className="px-3 py-2.5 text-sm text-muted-foreground">
+                  No contact details on file.
+                </p>
+              )
+            )}
+          </DetailSection>
+
+          {hasBookingDetails && (
+            <DetailSection title="Booking">
+              {bookingDetails?.articleType && (
+                <DetailRow label="Type" value={bookingDetails.articleType} />
+              )}
+              {bookingDetails?.originPincode && (
+                <DetailRow
+                  label="Origin PIN"
+                  value={bookingDetails.originPincode}
+                  mono
+                />
+              )}
+              {bookingDetails?.destinationPincode && (
+                <DetailRow
+                  label="Destination PIN"
+                  value={bookingDetails.destinationPincode}
+                  mono
+                />
+              )}
+              {bookingDetails?.tariff !== undefined && (
+                <DetailRow label="Tariff" value={`₹${bookingDetails.tariff}`} />
+              )}
+              {article.deliveredAt && (
+                <DetailRow
+                  label="Delivered at"
+                  value={formatDateTime(article.deliveredAt)}
+                />
+              )}
+            </DetailSection>
+          )}
+
+          {attributeEntries.length > 0 && (
+            <DetailSection title="Attributes">
+              {attributeEntries.map(([key, value]) => (
+                <DetailRow
+                  key={key}
+                  label={key.replace(/_/g, ' ')}
+                  value={value}
+                  mono
+                />
+              ))}
+            </DetailSection>
+          )}
+
+          <section className="space-y-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Tracking timeline
+            </h3>
+
+            {isLoading && (
+              <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-8 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading events…
+              </div>
+            )}
+
+            {isError && (
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-3 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                Failed to load tracking events.
+              </div>
+            )}
+
+            {!isLoading && !isError && events.length === 0 && (
+              <div className="rounded-lg border border-dashed border-border bg-muted/20 px-3 py-6 text-center text-sm text-muted-foreground">
+                No tracking events yet.
+              </div>
+            )}
+
+            {!isLoading && !isError && events.length > 0 && (
+              <div className="rounded-lg border border-border bg-card p-4">
+                <ol className="space-y-0">
+                  {events.map((event, index) => (
+                    <li key={event._id} className="flex gap-3">
+                      <div className="flex w-3 shrink-0 flex-col items-center">
+                        <span
+                          className={cn(
+                            'mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full border-2',
+                            index === 0
+                              ? 'border-primary bg-primary'
+                              : 'border-border bg-background',
+                          )}
+                          aria-hidden
+                        />
+                        {index < events.length - 1 && (
+                          <span
+                            className="my-1 w-px flex-1 bg-border"
+                            aria-hidden
+                          />
+                        )}
+                      </div>
+                      <div
+                        className={cn(
+                          'min-w-0 flex-1 pb-5',
+                          index === events.length - 1 && 'pb-0',
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p
+                            className={cn(
+                              'text-sm leading-snug',
+                              index === 0
+                                ? 'font-medium text-foreground'
+                                : 'text-foreground/90',
+                            )}
+                          >
+                            {event.rawEvent}
+                          </p>
+                          <ArticleStatusBadge
+                            status={event.normalizedStatus}
+                            className="shrink-0"
+                          />
+                        </div>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {event.office}
+                        </p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {formatDateTime(event.eventDate)}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* Footer */}
+        <div className="shrink-0 border-t border-border bg-muted/20 px-4 py-3">
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Sync tries
+              </p>
+              <p className="mt-0.5 font-mono text-sm tabular-nums">
+                {article.syncAttempts}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Last synced
+              </p>
+              <p className="mt-0.5 text-xs leading-snug">
+                {formatDate(article.lastSyncedAt)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Added
+              </p>
+              <p className="mt-0.5 text-xs leading-snug">
+                {formatDate(article.createdAt)}
+              </p>
+            </div>
+          </div>
         </div>
       </SheetContent>
     </Sheet>
