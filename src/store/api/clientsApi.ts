@@ -70,6 +70,25 @@ export const clientsApi = baseApi.injectEndpoints({
         { type: 'Client', id: 'LIST' },
       ],
     }),
+
+    deleteClient: build.mutation<{ deleted: boolean; clientId: string }, string>(
+      {
+        query: (clientId) => ({
+          url: `/api/v1/clients/${clientId}/purge`,
+          method: 'POST',
+        }),
+        transformResponse: (
+          res: ApiSuccess<{ deleted: boolean; clientId: string }>,
+        ) => res.data,
+        invalidatesTags: (_r, _e, clientId) => [
+          { type: 'Client', id: clientId },
+          { type: 'Client', id: 'LIST' },
+          { type: 'List', id: 'LIST' },
+          { type: 'Article', id: 'LIST' },
+          { type: 'User', id: 'LIST' },
+        ],
+      },
+    ),
   }),
 });
 
@@ -79,4 +98,5 @@ export const {
   useCreateClientMutation,
   useUpdateClientMutation,
   useDeactivateClientMutation,
+  useDeleteClientMutation,
 } = clientsApi;

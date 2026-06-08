@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, PowerOff, Loader2 } from 'lucide-react';
+import { Plus, Pencil, PowerOff, Trash2, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,14 +15,16 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { Pagination } from '@/components/shared/Pagination';
 import {
   useListClientsQuery,
   useCreateClientMutation,
   useUpdateClientMutation,
   useDeactivateClientMutation,
+  useDeleteClientMutation,
 } from '@/store/api/clientsApi';
-import { toSlug, formatDate } from '@/lib/helpers';
+import { toSlug, formatDate, getApiErrorMessage } from '@/lib/helpers';
 import type { Client } from '@/types';
 
 // ─── Form schema ──────────────────────────────────────────────────────────────
@@ -44,11 +46,15 @@ export function ClientsPage() {
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
+  const [submitError, setSubmitError] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
   const { data, isLoading } = useListClientsQuery({ page, limit: 20 });
   const [createClient, { isLoading: creating }] = useCreateClientMutation();
   const [updateClient, { isLoading: updating }] = useUpdateClientMutation();
   const [deactivateClient] = useDeactivateClientMutation();
+  const [deleteClient, { isLoading: deleting }] = useDeleteClientMutation();
 
   const {
     register,
@@ -65,11 +71,13 @@ export function ClientsPage() {
 
   function openCreate() {
     setEditing(null);
+    setSubmitError('');
     reset({ name: '', slug: '', contactEmail: '' });
     setDialogOpen(true);
   }
 
   function openEdit(client: Client) {
+    setSubmitError('');
     setEditing(client);
     reset({
       name: client.name,
@@ -79,14 +87,32 @@ export function ClientsPage() {
     setDialogOpen(true);
   }
 
-  async function onSubmit(values: FormValues) {
-    if (editing) {
-      await updateClient({ clientId: editing._id, body: values }).unwrap();
-    } else {
-      await createClient(values).unwrap();
+  async function handleDeleteClient() {
+    if (!deleteTarget) return;
+    setDeleteError('');
+    try {
+      await deleteClient(deleteTarget._id).unwrap();
+      setDeleteTarget(null);
+    } catch (err) {
+      setDeleteError(getApiErrorMessage(err, 'Failed to delete client.'));
     }
-    setDialogOpen(false);
-    reset();
+  }
+
+  async function onSubmit(values: FormValues) {
+    setSubmitError('');
+    try {
+      if (editing) {
+        await updateClient({ clientId: editing._id, body: values }).unwrap();
+      } else {
+        await createClient(values).unwrap();
+      }
+      setDialogOpen(false);
+      reset();
+    } catch (err) {
+      setSubmitError(
+        getApiErrorMessage(err, editing ? 'Failed to update client.' : 'Failed to create client.'),
+      );
+    }
   }
 
   return (
@@ -191,12 +217,25 @@ export function ClientsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        className="h-7 w-7 p-0 text-muted-foreground"
+                        title="Deactivate client"
                         onClick={() => deactivateClient(client._id)}
                       >
                         <PowerOff className="h-3.5 w-3.5" />
                       </Button>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                      title="Delete client permanently"
+                      onClick={() => {
+                        setDeleteError('');
+                        setDeleteTarget(client);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </td>
               </tr>
@@ -212,7 +251,13 @@ export function ClientsPage() {
       </div>
 
       {/* Create / Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setSubmitError('');
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit Client' : 'New Client'}</DialogTitle>
@@ -256,6 +301,13 @@ export function ClientsPage() {
                 </p>
               )}
             </div>
+
+            {submitError && (
+              <div className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {submitError}
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 type="button"
@@ -274,6 +326,17 @@ export function ClientsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteClient}
+        title="Delete client"
+        description="This permanently deletes the client, all lists, articles, customer users, and sync data. This cannot be undone."
+        entityName={deleteTarget?.name ?? ''}
+        isLoading={deleting}
+        error={deleteError}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Loader2, UserCheck, UserX, Link2, Pencil } from 'lucide-react';
+import { Plus, Loader2, UserCheck, UserX, Link2, Pencil, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,10 +23,17 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { Pagination } from '@/components/shared/Pagination';
-import { useListUsersQuery, useDeactivateUserMutation, useReactivateUserMutation, useAssignClientMutation } from '@/store/api/usersApi';
+import {
+  useListUsersQuery,
+  useDeactivateUserMutation,
+  useReactivateUserMutation,
+  useDeleteUserMutation,
+  useAssignClientMutation,
+} from '@/store/api/usersApi';
 import { useListClientsQuery } from '@/store/api/clientsApi';
-import { formatDate } from '@/lib/helpers';
+import { formatDate, getApiErrorMessage } from '@/lib/helpers';
 import { useAppSelector } from '@/store';
 import type { UserRole, PublicUser } from '@/types';
 
@@ -222,9 +229,22 @@ function UserRow({
 }) {
   const navigate = useNavigate();
   const [assignOpen, setAssignOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [deactivate] = useDeactivateUserMutation();
   const [reactivate] = useReactivateUserMutation();
+  const [deleteUser, { isLoading: deleting }] = useDeleteUserMutation();
   const clientName = clientOptions.find((c) => c._id === user.clientId)?.name;
+
+  async function handleDeleteUser() {
+    setDeleteError('');
+    try {
+      await deleteUser(user.id).unwrap();
+      setDeleteOpen(false);
+    } catch (err) {
+      setDeleteError(getApiErrorMessage(err, 'Failed to delete user.'));
+    }
+  }
 
   return (
     <>
@@ -274,7 +294,8 @@ function UserRow({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                className="h-7 w-7 p-0 text-muted-foreground"
+                title="Deactivate user"
                 disabled={user.id === currentUserId}
                 onClick={() => deactivate(user.id)}
               >
@@ -285,14 +306,38 @@ function UserRow({
                 variant="ghost"
                 size="sm"
                 className="h-7 w-7 p-0 text-green-600 hover:text-green-700"
+                title="Reactivate user"
                 onClick={() => reactivate(user.id)}
               >
                 <UserCheck className="h-3.5 w-3.5" />
               </Button>
             )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+              title="Delete user permanently"
+              disabled={user.id === currentUserId}
+              onClick={() => {
+                setDeleteError('');
+                setDeleteOpen(true);
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
           </div>
         </td>
       </tr>
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={handleDeleteUser}
+        title="Delete user"
+        description="This permanently removes the user account. They will no longer be able to sign in. This cannot be undone."
+        entityName={user.name ?? user.email}
+        isLoading={deleting}
+        error={deleteError}
+      />
       {assignOpen && (
         <AssignClientDialog
           user={user}

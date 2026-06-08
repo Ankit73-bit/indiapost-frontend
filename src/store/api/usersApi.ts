@@ -85,6 +85,20 @@ export const usersApi = baseApi.injectEndpoints({
       ],
     }),
 
+    deleteUser: build.mutation<{ deleted: boolean; userId: string }, string>({
+      query: (userId) => ({
+        url: `/api/v1/users/${userId}/purge`,
+        method: 'POST',
+      }),
+      transformResponse: (
+        res: ApiSuccess<{ deleted: boolean; userId: string }>,
+      ) => res.data,
+      invalidatesTags: (_r, _e, userId) => [
+        { type: 'User' as const, id: userId },
+        { type: 'User' as const, id: 'LIST' },
+      ],
+    }),
+
     assignClient: build.mutation<PublicUser, { userId: string; body: AssignClientBody }>({
       query: ({ userId, body }) => ({
         url: `/api/v1/users/${userId}/assign-client`,
@@ -110,5 +124,6 @@ export const {
   useAdminUpdateUserMutation,
   useDeactivateUserMutation,
   useReactivateUserMutation,
+  useDeleteUserMutation,
   useAssignClientMutation,
 } = usersApi;

@@ -62,6 +62,33 @@ export const listsApi = baseApi.injectEndpoints({
       ],
     }),
 
+    unarchiveList: build.mutation<List, string>({
+      query: (listId) => ({
+        url: `/api/v1/lists/${listId}/unarchive`,
+        method: 'POST',
+      }),
+      transformResponse: (res: ApiSuccess<List>) => res.data,
+      invalidatesTags: (_r, _e, listId) => [
+        { type: 'List', id: listId },
+        { type: 'List', id: 'LIST' },
+      ],
+    }),
+
+    deleteList: build.mutation<{ deleted: boolean; listId: string }, string>({
+      query: (listId) => ({
+        url: `/api/v1/lists/${listId}/purge`,
+        method: 'POST',
+      }),
+      transformResponse: (
+        res: ApiSuccess<{ deleted: boolean; listId: string }>,
+      ) => res.data,
+      invalidatesTags: (_r, _e, listId) => [
+        { type: 'List', id: listId },
+        { type: 'List', id: 'LIST' },
+        { type: 'Article', id: 'LIST' },
+      ],
+    }),
+
     uploadListFile: build.mutation<unknown, { listId: string; file: File }>({
       query: ({ listId, file }) => {
         const form = new FormData();
@@ -83,5 +110,7 @@ export const {
   useCreateListMutation,
   useUpdateListMutation,
   useArchiveListMutation,
+  useUnarchiveListMutation,
+  useDeleteListMutation,
   useUploadListFileMutation,
 } = listsApi;

@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Plus, Upload, Download, Archive, Pencil, Loader2 } from 'lucide-react';
+import {
+  Plus,
+  Upload,
+  Download,
+  Archive,
+  ArchiveRestore,
+  Pencil,
+  Loader2,
+  Trash2,
+} from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,17 +31,21 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { ListStatusBadge } from '@/components/shared/StatusBadge';
 import { Pagination } from '@/components/shared/Pagination';
+import { useAppSelector } from '@/store';
 import { useListClientsQuery } from '@/store/api/clientsApi';
 import {
   useListListsQuery,
   useCreateListMutation,
   useUpdateListMutation,
   useArchiveListMutation,
+  useUnarchiveListMutation,
+  useDeleteListMutation,
   useUploadListFileMutation,
 } from '@/store/api/listsApi';
-import { toSlug, formatDate, formatBytes } from '@/lib/helpers';
+import { toSlug, formatDate, formatBytes, getApiErrorMessage } from '@/lib/helpers';
 import type { List, NoticeType } from '@/types';
 
 // ─── Form schema ──────────────────────────────────────────────────────────────
@@ -53,11 +66,15 @@ type FormValues = z.infer<typeof schema>;
 export function ListsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const isAdmin = useAppSelector((s) => s.auth.user?.role === 'admin');
   const clientIdFilter = searchParams.get('clientId') ?? undefined;
   const [page, setPage] = useState(1);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<List | null>(null);
+  const [submitError, setSubmitError] = useState('');
   const [uploadingListId, setUploadingListId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<List | null>(null);
+  const [deleteError, setDeleteError] = useState('');
 
   const { data: clientsData } = useListClientsQuery({ limit: 100 });
   const { data, isLoading } = useListListsQuery({
@@ -69,6 +86,8 @@ export function ListsPage() {
   const [createList, { isLoading: creating }] = useCreateListMutation();
   const [updateList, { isLoading: updating }] = useUpdateListMutation();
   const [archiveList] = useArchiveListMutation();
+  const [unarchiveList] = useUnarchiveListMutation();
+  const [deleteList, { isLoading: deleting }] = useDeleteListMutation();
   const [uploadFile, { isLoading: uploading }] = useUploadListFileMutation();
 
   const {
@@ -85,11 +104,13 @@ export function ListsPage() {
 
   function openCreate() {
     setEditing(null);
+    setSubmitError('');
     reset({ clientId: clientIdFilter ?? '', name: '', slug: '' });
     setDialogOpen(true);
   }
 
   function openEdit(list: List) {
+    setSubmitError('');
     setEditing(list);
     reset({
       clientId: list.clientId,
@@ -104,13 +125,20 @@ export function ListsPage() {
   }
 
   async function onSubmit(values: FormValues) {
-    if (editing) {
-      await updateList({ listId: editing._id, body: values }).unwrap();
-    } else {
-      await createList(values).unwrap();
+    setSubmitError('');
+    try {
+      if (editing) {
+        await updateList({ listId: editing._id, body: values }).unwrap();
+      } else {
+        await createList(values).unwrap();
+      }
+      setDialogOpen(false);
+      reset();
+    } catch (err) {
+      setSubmitError(
+        getApiErrorMessage(err, editing ? 'Failed to update list.' : 'Failed to create list.'),
+      );
     }
-    setDialogOpen(false);
-    reset();
   }
 
   async function handleFileUpload(listId: string, file: File) {
@@ -123,6 +151,17 @@ export function ListsPage() {
   }
 
   const [exportingListId, setExportingListId] = useState<string | null>(null);
+
+  async function handleDeleteList() {
+    if (!deleteTarget) return;
+    setDeleteError('');
+    try {
+      await deleteList(deleteTarget._id).unwrap();
+      setDeleteTarget(null);
+    } catch (err) {
+      setDeleteError(getApiErrorMessage(err, 'Failed to delete list.'));
+    }
+  }
 
   async function handleExport(listId: string, listName: string) {
     setExportingListId(listId);
@@ -293,15 +332,41 @@ export function ListsPage() {
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    {/* Archive */}
-                    {list.status !== 'ARCHIVED' && (
+                    {/* Archive / Unarchive (admin) */}
+                    {isAdmin &&
+                      (list.status === 'ARCHIVED' ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-primary"
+                          title="Unarchive list"
+                          onClick={() => unarchiveList(list._id)}
+                        >
+                          <ArchiveRestore className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-muted-foreground"
+                          title="Archive list"
+                          onClick={() => archiveList(list._id)}
+                        >
+                          <Archive className="h-3.5 w-3.5" />
+                        </Button>
+                      ))}
+                    {isAdmin && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 p-0 text-muted-foreground"
-                        onClick={() => archiveList(list._id)}
+                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        title="Delete list permanently"
+                        onClick={() => {
+                          setDeleteError('');
+                          setDeleteTarget(list);
+                        }}
                       >
-                        <Archive className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     )}
                   </div>
@@ -319,7 +384,13 @@ export function ListsPage() {
       </div>
 
       {/* Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setSubmitError('');
+        }}
+      >
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit List' : 'New List'}</DialogTitle>
@@ -427,6 +498,12 @@ export function ListsPage() {
               </div>
             </div>
 
+            {submitError && (
+              <div className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {submitError}
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 type="button"
@@ -445,6 +522,17 @@ export function ListsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteList}
+        title="Delete list"
+        description="This permanently deletes the list, all its articles, and tracking history. This cannot be undone."
+        entityName={deleteTarget?.name ?? ''}
+        isLoading={deleting}
+        error={deleteError}
+      />
     </div>
   );
 }
