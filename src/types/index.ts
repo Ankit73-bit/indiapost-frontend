@@ -157,7 +157,9 @@ export type ListStatus =
 export interface ImportProgress {
   totalRows: number;
   processedRows: number;
+  failedRows?: number;
   startedAt: string;
+  updatedAt?: string;
   fileName?: string;
 }
 

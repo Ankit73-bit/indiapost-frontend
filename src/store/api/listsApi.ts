@@ -89,6 +89,34 @@ export const listsApi = baseApi.injectEndpoints({
       ],
     }),
 
+    cancelImport: build.mutation<{ cancelled: boolean; listId: string }, string>({
+      query: (listId) => ({
+        url: `/api/v1/lists/${listId}/cancel-import`,
+        method: 'POST',
+      }),
+      transformResponse: (
+        res: ApiSuccess<{ cancelled: boolean; listId: string }>,
+      ) => res.data,
+      invalidatesTags: (_r, _e, listId) => [
+        { type: 'List', id: listId },
+        { type: 'List', id: 'LIST' },
+      ],
+    }),
+
+    cancelSync: build.mutation<{ cancelled: boolean; listId: string }, string>({
+      query: (listId) => ({
+        url: `/api/v1/lists/${listId}/cancel-sync`,
+        method: 'POST',
+      }),
+      transformResponse: (
+        res: ApiSuccess<{ cancelled: boolean; listId: string }>,
+      ) => res.data,
+      invalidatesTags: (_r, _e, listId) => [
+        { type: 'List', id: listId },
+        { type: 'List', id: 'LIST' },
+      ],
+    }),
+
     uploadListFile: build.mutation<unknown, { listId: string; file: File }>({
       query: ({ listId, file }) => {
         const form = new FormData();
@@ -116,4 +144,6 @@ export const {
   useUnarchiveListMutation,
   useDeleteListMutation,
   useUploadListFileMutation,
+  useCancelImportMutation,
+  useCancelSyncMutation,
 } = listsApi;

@@ -9,6 +9,7 @@ import {
   Pencil,
   Loader2,
   Trash2,
+  XCircle,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -44,6 +45,8 @@ import {
   useUnarchiveListMutation,
   useDeleteListMutation,
   useUploadListFileMutation,
+  useCancelImportMutation,
+  useCancelSyncMutation,
 } from '@/store/api/listsApi';
 import { toSlug, formatDate, formatBytes, getApiErrorMessage } from '@/lib/helpers';
 import type { List, NoticeType } from '@/types';
@@ -71,6 +74,14 @@ function syncPercent(list: List): number {
   const p = list.syncProgress;
   if (!p || p.totalArticles <= 0) return 0;
   return Math.min(100, Math.round((p.processedCount / p.totalArticles) * 100));
+}
+
+function isProgressStuck(
+  progress?: { updatedAt?: string; startedAt: string },
+): boolean {
+  if (!progress) return false;
+  const last = progress.updatedAt ?? progress.startedAt;
+  return Date.now() - new Date(last).getTime() > 5 * 60 * 1000;
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -113,6 +124,8 @@ export function ListsPage() {
   const [unarchiveList] = useUnarchiveListMutation();
   const [deleteList, { isLoading: deleting }] = useDeleteListMutation();
   const [uploadFile, { isLoading: uploading }] = useUploadListFileMutation();
+  const [cancelImport] = useCancelImportMutation();
+  const [cancelSync] = useCancelSyncMutation();
 
   const {
     register,
@@ -232,6 +245,12 @@ export function ListsPage() {
           <p className="mt-1 text-amber-800/90">
             Processing runs on the server — refreshing or closing this page does
             not stop it. Progress updates every few seconds below.
+            {importingLists.some((l) => isProgressStuck(l.importProgress)) && (
+              <span className="block mt-1 font-medium">
+                Progress has not moved in 5+ minutes — use Cancel on the row to
+                reset and upload again.
+              </span>
+            )}
           </p>
         </div>
       )}
@@ -335,6 +354,12 @@ export function ListsPage() {
                       <p className="text-xs text-muted-foreground">
                         {list.importProgress.processedRows.toLocaleString()} /{' '}
                         {list.importProgress.totalRows.toLocaleString()} rows
+                        {(list.importProgress.failedRows ?? 0) > 0 && (
+                          <span className="text-destructive">
+                            {' '}
+                            · {list.importProgress.failedRows} failed
+                          </span>
+                        )}
                       </p>
                     </div>
                   )}
@@ -381,6 +406,28 @@ export function ListsPage() {
                     className="flex justify-end gap-1"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    {isAdmin && list.status === 'IMPORTING' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-destructive"
+                        title="Cancel stuck import"
+                        onClick={() => cancelImport(list._id)}
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {isAdmin && list.status === 'SYNCING' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-destructive"
+                        title="Reset stuck sync"
+                        onClick={() => cancelSync(list._id)}
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     {/* Upload */}
                     <label
                       className={
