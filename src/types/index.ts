@@ -281,6 +281,8 @@ export interface Article {
   isTerminal: boolean;
   lastSyncedAt?: string;
   syncAttempts: number;
+  syncError?: string;
+  syncErrorAt?: string;
   deliveredAt?: string;
   bookingDetails?: BookingDetails;
   latestEvent?: LatestEvent;

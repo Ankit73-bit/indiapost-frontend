@@ -287,6 +287,10 @@ export function SyncPage() {
 
         {/* ── Failed Articles ── */}
         <TabsContent value="failed">
+          <p className="mb-3 text-sm text-muted-foreground">
+            Articles where the last sync attempt failed. Trigger Sync on the list
+            retries all of these automatically — per-article Retry is optional.
+          </p>
           <div className="rounded-lg border border-border bg-card">
             <table className="w-full text-sm">
               <thead>
