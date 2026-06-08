@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -61,6 +61,12 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
+function importPercent(list: List): number {
+  const p = list.importProgress;
+  if (!p || p.totalRows <= 0) return 0;
+  return Math.min(100, Math.round((p.processedRows / p.totalRows) * 100));
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function ListsPage() {
@@ -75,13 +81,24 @@ export function ListsPage() {
   const [uploadingListId, setUploadingListId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<List | null>(null);
   const [deleteError, setDeleteError] = useState('');
+  const [uploadError, setUploadError] = useState('');
+  const [pollImports, setPollImports] = useState(false);
 
   const { data: clientsData } = useListClientsQuery({ limit: 100 });
-  const { data, isLoading } = useListListsQuery({
-    clientId: clientIdFilter,
-    page,
-    limit: 20,
-  });
+  const { data, isLoading } = useListListsQuery(
+    {
+      clientId: clientIdFilter,
+      page,
+      limit: 20,
+    },
+    { pollingInterval: pollImports ? 3000 : 0 },
+  );
+
+  const importingLists = data?.data.filter((l) => l.status === 'IMPORTING') ?? [];
+
+  useEffect(() => {
+    setPollImports(importingLists.length > 0);
+  }, [importingLists.length]);
 
   const [createList, { isLoading: creating }] = useCreateListMutation();
   const [updateList, { isLoading: updating }] = useUpdateListMutation();
@@ -143,8 +160,12 @@ export function ListsPage() {
 
   async function handleFileUpload(listId: string, file: File) {
     setUploadingListId(listId);
+    setUploadError('');
     try {
       await uploadFile({ listId, file }).unwrap();
+      setPollImports(true);
+    } catch (err) {
+      setUploadError(getApiErrorMessage(err, 'Failed to start import.'));
     } finally {
       setUploadingListId(null);
     }
@@ -194,6 +215,25 @@ export function ListsPage() {
           </Button>
         }
       />
+
+      {importingLists.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="font-medium">
+            Import in progress ({importingLists.length} list
+            {importingLists.length !== 1 ? 's' : ''})
+          </p>
+          <p className="mt-1 text-amber-800/90">
+            Processing runs on the server — refreshing or closing this page does
+            not stop it. Progress updates every few seconds below.
+          </p>
+        </div>
+      )}
+
+      {uploadError && (
+        <div className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {uploadError}
+        </div>
+      )}
 
       {/* Table */}
       <div className="rounded-lg border border-border bg-card">
@@ -264,6 +304,25 @@ export function ListsPage() {
                 </td>
                 <td className="px-4 py-3">
                   <ListStatusBadge status={list.status} />
+                  {list.status === 'IMPORTING' && list.importProgress && (
+                    <div className="mt-2 space-y-1">
+                      <div className="h-1.5 w-full max-w-[140px] overflow-hidden rounded-full bg-amber-200">
+                        <div
+                          className="h-full rounded-full bg-amber-500 transition-all duration-500"
+                          style={{ width: `${importPercent(list)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {list.importProgress.processedRows.toLocaleString()} /{' '}
+                        {list.importProgress.totalRows.toLocaleString()} rows
+                      </p>
+                    </div>
+                  )}
+                  {list.importError && (
+                    <p className="mt-1 max-w-[180px] text-xs text-destructive">
+                      {list.importError}
+                    </p>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-right font-mono">
                   {list.totalArticles.toLocaleString()}
@@ -282,11 +341,21 @@ export function ListsPage() {
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Upload */}
-                    <label className="cursor-pointer">
+                    <label
+                      className={
+                        list.status === 'IMPORTING' || list.status === 'SYNCING'
+                          ? 'cursor-not-allowed opacity-40'
+                          : 'cursor-pointer'
+                      }
+                    >
                       <input
                         type="file"
                         accept=".xlsx,.xls,.csv"
                         className="hidden"
+                        disabled={
+                          list.status === 'IMPORTING' ||
+                          list.status === 'SYNCING'
+                        }
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) handleFileUpload(list._id, file);
@@ -298,7 +367,11 @@ export function ListsPage() {
                         size="sm"
                         className="h-7 w-7 p-0"
                         asChild
-                        disabled={uploadingListId === list._id}
+                        disabled={
+                          uploadingListId === list._id ||
+                          list.status === 'IMPORTING' ||
+                          list.status === 'SYNCING'
+                        }
                       >
                         <span>
                           {uploadingListId === list._id ? (

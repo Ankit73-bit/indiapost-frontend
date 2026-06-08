@@ -146,7 +146,20 @@ export interface ListClientsQuery {
 // ─── List ─────────────────────────────────────────────────────────────────────
 
 export type NoticeType = 'DEMAND' | 'LEGAL' | 'REMINDER' | 'CUSTOM';
-export type ListStatus = 'DRAFT' | 'ACTIVE' | 'SYNCING' | 'COMPLETED' | 'ARCHIVED';
+export type ListStatus =
+  | 'DRAFT'
+  | 'IMPORTING'
+  | 'ACTIVE'
+  | 'SYNCING'
+  | 'COMPLETED'
+  | 'ARCHIVED';
+
+export interface ImportProgress {
+  totalRows: number;
+  processedRows: number;
+  startedAt: string;
+  fileName?: string;
+}
 
 export type ListStats = Partial<Record<NormalizedStatus, number>>;
 
@@ -180,6 +193,8 @@ export interface List {
   stats: ListStats;
   status: ListStatus;
   lastImportResult?: ImportResult;
+  importProgress?: ImportProgress;
+  importError?: string;
   createdBy?: string;
   createdAt: string;
   updatedAt: string;

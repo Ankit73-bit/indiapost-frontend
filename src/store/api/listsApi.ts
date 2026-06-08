@@ -99,7 +99,10 @@ export const listsApi = baseApi.injectEndpoints({
           body: form,
         };
       },
-      invalidatesTags: (_r, _e, { listId }) => [{ type: 'List', id: listId }],
+      invalidatesTags: (_r, _e, { listId }) => [
+        { type: 'List', id: listId },
+        { type: 'List', id: 'LIST' },
+      ],
     }),
   }),
 });
