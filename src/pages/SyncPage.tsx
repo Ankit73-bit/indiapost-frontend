@@ -67,10 +67,13 @@ export function SyncPage() {
     { pollingInterval: pollJobs ? 3000 : 0 },
   );
   const { data: failedData, isLoading: failedLoading } =
-    useListFailedArticlesQuery({
-      page: failedPage,
-      limit: 20,
-    });
+    useListFailedArticlesQuery(
+      {
+        page: failedPage,
+        limit: 20,
+      },
+      { pollingInterval: pollJobs ? 3000 : 0 },
+    );
 
   const { data: clientListsData } = useListListsQuery(
     { clientId: selectedClientId || undefined, limit: 100 },
@@ -335,10 +338,10 @@ export function SyncPage() {
                       {fa.reason}
                     </td>
                     <td className="px-4 py-3 text-right font-mono">
-                      {fa.attempts}
+                      {fa.retryCount}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">
-                      {formatRelative(fa.lastAttemptAt)}
+                      {formatRelative(fa.updatedAt ?? fa.createdAt)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Button

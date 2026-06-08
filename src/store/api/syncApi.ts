@@ -17,6 +17,7 @@ export const syncApi = baseApi.injectEndpoints({
       invalidatesTags: [
         { type: 'SyncJob', id: 'LIST' },
         { type: 'List', id: 'LIST' },
+        { type: 'FailedArticle', id: 'LIST' },
       ],
     }),
 

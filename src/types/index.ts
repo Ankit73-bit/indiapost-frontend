@@ -369,9 +369,9 @@ export interface FailedArticle {
   listId: string;
   articleNumber: string;
   reason: string;
-  attempts: number;
-  lastAttemptAt: string;
-  resolved: boolean;
+  retryCount: number;
+  isResolved: boolean;
+  updatedAt: string;
   createdAt: string;
 }
 
