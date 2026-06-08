@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { RefreshCw, RotateCcw, Loader2, ChevronDown } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { RefreshCw, RotateCcw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -20,13 +20,29 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { SyncJobStatusBadge } from '@/components/shared/StatusBadge';
 import { Pagination } from '@/components/shared/Pagination';
 import { useListClientsQuery } from '@/store/api/clientsApi';
+import { useListListsQuery } from '@/store/api/listsApi';
 import {
   useTriggerSyncMutation,
   useListSyncJobsQuery,
   useListFailedArticlesQuery,
   useRetryFailedArticleMutation,
 } from '@/store/api/syncApi';
-import { formatDateTime, formatRelative } from '@/lib/helpers';
+import { formatRelative, getApiErrorMessage } from '@/lib/helpers';
+import type { SyncJob } from '@/types';
+
+const ALL_LISTS = '__all__';
+
+function syncJobPercent(job: SyncJob): number {
+  if (!job.totalArticles) return 0;
+  return Math.min(
+    100,
+    Math.round((job.processedCount / job.totalArticles) * 100),
+  );
+}
+
+function isActiveJob(job: SyncJob): boolean {
+  return job.status === 'QUEUED' || job.status === 'RUNNING';
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -35,28 +51,97 @@ export function SyncPage() {
   const [failedPage, setFailedPage] = useState(1);
   const [triggerDialogOpen, setTriggerDialogOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState('');
+  const [selectedListId, setSelectedListId] = useState(ALL_LISTS);
+  const [triggerError, setTriggerError] = useState('');
+  const [triggerSuccess, setTriggerSuccess] = useState('');
+  const [pollJobs, setPollJobs] = useState(false);
 
   const { data: clientsData } = useListClientsQuery({ limit: 100 });
-  const { data: jobsData, isLoading: jobsLoading } = useListSyncJobsQuery({
-    page: jobsPage,
-    limit: 20,
-    listOnly: false,
-  });
+  const { data: listsData } = useListListsQuery({ limit: 500 });
+  const { data: jobsData, isLoading: jobsLoading } = useListSyncJobsQuery(
+    {
+      page: jobsPage,
+      limit: 20,
+      listOnly: false,
+    },
+    { pollingInterval: pollJobs ? 3000 : 0 },
+  );
   const { data: failedData, isLoading: failedLoading } =
     useListFailedArticlesQuery({
       page: failedPage,
       limit: 20,
     });
 
+  const { data: clientListsData } = useListListsQuery(
+    { clientId: selectedClientId || undefined, limit: 100 },
+    { skip: !selectedClientId },
+  );
+
+  const activeJobs =
+    jobsData?.data.filter((j) => isActiveJob(j)) ?? [];
+
+  useEffect(() => {
+    setPollJobs(activeJobs.length > 0);
+  }, [activeJobs.length]);
+
+  const listNameById = new Map(
+    listsData?.data.map((l) => [l._id, l.name]) ?? [],
+  );
+
   const [triggerSync, { isLoading: triggering }] = useTriggerSyncMutation();
   const [retryArticle] = useRetryFailedArticleMutation();
 
+  const syncableLists =
+    clientListsData?.data.filter(
+      (l) =>
+        l.status !== 'IMPORTING' &&
+        l.status !== 'SYNCING' &&
+        l.status !== 'ARCHIVED',
+    ) ?? [];
+
+  function handleClientChange(clientId: string) {
+    setSelectedClientId(clientId);
+    setSelectedListId(ALL_LISTS);
+    setTriggerError('');
+  }
+
+  function openTriggerDialog() {
+    setSelectedClientId('');
+    setSelectedListId(ALL_LISTS);
+    setTriggerError('');
+    setTriggerSuccess('');
+    setTriggerDialogOpen(true);
+  }
+
   async function handleTrigger() {
     if (!selectedClientId) return;
-    await triggerSync({ clientId: selectedClientId }).unwrap();
-    setTriggerDialogOpen(false);
-    setSelectedClientId('');
+    setTriggerError('');
+    setTriggerSuccess('');
+    try {
+      const body =
+        selectedListId === ALL_LISTS
+          ? { clientId: selectedClientId }
+          : { clientId: selectedClientId, listId: selectedListId };
+      const result = await triggerSync(body).unwrap();
+      setTriggerSuccess(result.message);
+      if (result.syncJobId) {
+        setPollJobs(true);
+      }
+      setTimeout(() => {
+        setTriggerDialogOpen(false);
+        setSelectedClientId('');
+        setSelectedListId(ALL_LISTS);
+        setTriggerSuccess('');
+      }, 1200);
+    } catch (err) {
+      setTriggerError(getApiErrorMessage(err));
+    }
   }
+
+  const scopeHint =
+    selectedListId === ALL_LISTS
+      ? 'Creates one sync job per list that has non-terminal articles for this client.'
+      : 'Syncs only non-terminal articles in the selected list.';
 
   return (
     <div className="space-y-5">
@@ -64,11 +149,20 @@ export function SyncPage() {
         title="Sync"
         description="Monitor and trigger India Post tracking sync jobs."
         actions={
-          <Button size="sm" onClick={() => setTriggerDialogOpen(true)}>
+          <Button size="sm" onClick={openTriggerDialog}>
             <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Trigger Sync
           </Button>
         }
       />
+
+      {activeJobs.length > 0 && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          <p className="font-medium">
+            {activeJobs.length} sync job{activeJobs.length !== 1 ? 's' : ''}{' '}
+            running — progress refreshes automatically.
+          </p>
+        </div>
+      )}
 
       <Tabs defaultValue="jobs">
         <TabsList className="mb-4">
@@ -96,13 +190,13 @@ export function SyncPage() {
                     Client
                   </th>
                   <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                    Triggered By
+                    List
                   </th>
                   <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
                     Status
                   </th>
-                  <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
-                    Articles
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                    Progress
                   </th>
                   <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
                     Failed
@@ -142,14 +236,33 @@ export function SyncPage() {
                       {clientsData?.data.find((c) => c._id === job.clientId)
                         ?.name ?? job.clientId.slice(-6)}
                     </td>
-                    <td className="px-4 py-3 capitalize text-muted-foreground">
-                      {job.triggeredBy}
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {job.listId
+                        ? (listNameById.get(job.listId) ?? job.listId.slice(-6))
+                        : '—'}
                     </td>
                     <td className="px-4 py-3">
                       <SyncJobStatusBadge status={job.status} />
                     </td>
-                    <td className="px-4 py-3 text-right font-mono">
-                      {job.processedCount}/{job.totalArticles}
+                    <td className="px-4 py-3 min-w-[160px]">
+                      {job.totalArticles > 0 ? (
+                        <div className="space-y-1">
+                          <div className="h-1.5 w-full max-w-[140px] overflow-hidden rounded-full bg-muted">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                isActiveJob(job) ? 'bg-blue-500' : 'bg-muted-foreground/40'
+                              }`}
+                              style={{ width: `${syncJobPercent(job)}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground font-mono">
+                            {job.processedCount.toLocaleString()} /{' '}
+                            {job.totalArticles.toLocaleString()}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right font-mono text-destructive">
                       {job.failedCount > 0 ? job.failedCount : '—'}
@@ -255,32 +368,86 @@ export function SyncPage() {
 
       {/* Trigger dialog */}
       <Dialog open={triggerDialogOpen} onOpenChange={setTriggerDialogOpen}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Trigger Sync</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <p className="text-sm text-muted-foreground">
-              This will enqueue a sync job for all non-terminal articles of the
-              selected client.
-            </p>
-            <Select
-              value={selectedClientId}
-              onValueChange={setSelectedClientId}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select client" />
-              </SelectTrigger>
-              <SelectContent>
-                {clientsData?.data
-                  .filter((c) => c.isActive)
-                  .map((c) => (
-                    <SelectItem key={c._id} value={c._id}>
-                      {c.name}
+            <p className="text-sm text-muted-foreground">{scopeHint}</p>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                Client
+              </label>
+              <Select
+                value={selectedClientId}
+                onValueChange={handleClientChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select client" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientsData?.data
+                    .filter((c) => c.isActive)
+                    .map((c) => (
+                      <SelectItem key={c._id} value={c._id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedClientId && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">
+                  List
+                </label>
+                <Select
+                  value={selectedListId}
+                  onValueChange={(v) => {
+                    setSelectedListId(v);
+                    setTriggerError('');
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select list" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_LISTS}>
+                      All lists (one job per list)
                     </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+                    {syncableLists.map((l) => (
+                      <SelectItem key={l._id} value={l._id}>
+                        {l.name}
+                        {l.totalArticles > 0
+                          ? ` · ${l.totalArticles.toLocaleString()} articles`
+                          : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {clientListsData?.data.some(
+                  (l) => l.status === 'IMPORTING' || l.status === 'SYNCING',
+                ) && (
+                  <p className="text-xs text-muted-foreground">
+                    Lists currently importing or syncing are excluded from this
+                    picker.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {triggerError && (
+              <div className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {triggerError}
+              </div>
+            )}
+            {triggerSuccess && (
+              <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                {triggerSuccess}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

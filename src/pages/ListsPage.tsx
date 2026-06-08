@@ -67,6 +67,12 @@ function importPercent(list: List): number {
   return Math.min(100, Math.round((p.processedRows / p.totalRows) * 100));
 }
 
+function syncPercent(list: List): number {
+  const p = list.syncProgress;
+  if (!p || p.totalArticles <= 0) return 0;
+  return Math.min(100, Math.round((p.processedCount / p.totalArticles) * 100));
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function ListsPage() {
@@ -82,7 +88,7 @@ export function ListsPage() {
   const [deleteTarget, setDeleteTarget] = useState<List | null>(null);
   const [deleteError, setDeleteError] = useState('');
   const [uploadError, setUploadError] = useState('');
-  const [pollImports, setPollImports] = useState(false);
+  const [pollActiveOps, setPollActiveOps] = useState(false);
 
   const { data: clientsData } = useListClientsQuery({ limit: 100 });
   const { data, isLoading } = useListListsQuery(
@@ -91,14 +97,15 @@ export function ListsPage() {
       page,
       limit: 20,
     },
-    { pollingInterval: pollImports ? 3000 : 0 },
+    { pollingInterval: pollActiveOps ? 3000 : 0 },
   );
 
   const importingLists = data?.data.filter((l) => l.status === 'IMPORTING') ?? [];
+  const syncingLists = data?.data.filter((l) => l.status === 'SYNCING') ?? [];
 
   useEffect(() => {
-    setPollImports(importingLists.length > 0);
-  }, [importingLists.length]);
+    setPollActiveOps(importingLists.length > 0 || syncingLists.length > 0);
+  }, [importingLists.length, syncingLists.length]);
 
   const [createList, { isLoading: creating }] = useCreateListMutation();
   const [updateList, { isLoading: updating }] = useUpdateListMutation();
@@ -163,7 +170,7 @@ export function ListsPage() {
     setUploadError('');
     try {
       await uploadFile({ listId, file }).unwrap();
-      setPollImports(true);
+      setPollActiveOps(true);
     } catch (err) {
       setUploadError(getApiErrorMessage(err, 'Failed to start import.'));
     } finally {
@@ -225,6 +232,19 @@ export function ListsPage() {
           <p className="mt-1 text-amber-800/90">
             Processing runs on the server — refreshing or closing this page does
             not stop it. Progress updates every few seconds below.
+          </p>
+        </div>
+      )}
+
+      {syncingLists.length > 0 && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          <p className="font-medium">
+            Sync in progress ({syncingLists.length} list
+            {syncingLists.length !== 1 ? 's' : ''})
+          </p>
+          <p className="mt-1 text-blue-800/90">
+            India Post tracking sync runs on the server. Progress updates every
+            few seconds below.
           </p>
         </div>
       )}
@@ -315,6 +335,27 @@ export function ListsPage() {
                       <p className="text-xs text-muted-foreground">
                         {list.importProgress.processedRows.toLocaleString()} /{' '}
                         {list.importProgress.totalRows.toLocaleString()} rows
+                      </p>
+                    </div>
+                  )}
+                  {list.status === 'SYNCING' && list.syncProgress && (
+                    <div className="mt-2 space-y-1">
+                      <div className="h-1.5 w-full max-w-[140px] overflow-hidden rounded-full bg-blue-200">
+                        <div
+                          className="h-full rounded-full bg-blue-500 transition-all duration-500"
+                          style={{ width: `${syncPercent(list)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {list.syncProgress.processedCount.toLocaleString()} /{' '}
+                        {list.syncProgress.totalArticles.toLocaleString()}{' '}
+                        articles
+                        {list.syncProgress.failedCount > 0 && (
+                          <span className="text-destructive">
+                            {' '}
+                            · {list.syncProgress.failedCount} failed
+                          </span>
+                        )}
                       </p>
                     </div>
                   )}

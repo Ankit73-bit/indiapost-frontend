@@ -161,6 +161,14 @@ export interface ImportProgress {
   fileName?: string;
 }
 
+export interface SyncProgress {
+  syncJobId: string;
+  totalArticles: number;
+  processedCount: number;
+  failedCount: number;
+  startedAt: string;
+}
+
 export type ListStats = Partial<Record<NormalizedStatus, number>>;
 
 export interface UploadedFile {
@@ -195,6 +203,7 @@ export interface List {
   lastImportResult?: ImportResult;
   importProgress?: ImportProgress;
   importError?: string;
+  syncProgress?: SyncProgress;
   createdBy?: string;
   createdAt: string;
   updatedAt: string;
@@ -344,6 +353,11 @@ export interface SyncJob {
 export interface TriggerSyncBody {
   clientId: string;
   listId?: string;
+}
+
+export interface TriggerSyncResponse {
+  syncJobId: string | null;
+  message: string;
 }
 
 export interface FailedArticle {

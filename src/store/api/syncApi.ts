@@ -4,16 +4,20 @@ import type {
   SyncJob,
   FailedArticle,
   TriggerSyncBody,
+  TriggerSyncResponse,
   ListSyncJobsQuery,
   PaginationMeta,
 } from '@/types';
 
 export const syncApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
-    triggerSync: build.mutation<SyncJob, TriggerSyncBody>({
+    triggerSync: build.mutation<TriggerSyncResponse, TriggerSyncBody>({
       query: (body) => ({ url: '/api/v1/sync/trigger', method: 'POST', body }),
-      transformResponse: (res: ApiSuccess<SyncJob>) => res.data,
-      invalidatesTags: [{ type: 'SyncJob', id: 'LIST' }],
+      transformResponse: (res: ApiSuccess<TriggerSyncResponse>) => res.data,
+      invalidatesTags: [
+        { type: 'SyncJob', id: 'LIST' },
+        { type: 'List', id: 'LIST' },
+      ],
     }),
 
     listSyncJobs: build.query<
