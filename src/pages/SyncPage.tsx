@@ -57,7 +57,7 @@ export function SyncPage() {
   const [pollJobs, setPollJobs] = useState(false);
 
   const { data: clientsData } = useListClientsQuery({ limit: 100 });
-  const { data: listsData } = useListListsQuery({ limit: 500 });
+  const { data: listsData } = useListListsQuery({ limit: 100 });
   const { data: jobsData, isLoading: jobsLoading } = useListSyncJobsQuery(
     {
       page: jobsPage,
