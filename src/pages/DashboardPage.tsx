@@ -112,7 +112,7 @@ export function DashboardPage() {
             value={failedCount}
             icon={AlertTriangle}
             sub="Click to retry"
-            onClick={() => navigate('/sync')}
+            onClick={() => navigate('/sync?tab=failed')}
           />
         )}
       </div>

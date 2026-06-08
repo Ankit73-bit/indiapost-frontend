@@ -1,5 +1,6 @@
 import { Outlet, Navigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
+import { OperationsBanner } from '@/components/shared/OperationsBanner';
 import { useAppSelector } from '@/store';
 
 export function AppShell() {
@@ -11,6 +12,7 @@ export function AppShell() {
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
+        <OperationsBanner />
         <div className="mx-auto max-w-7xl px-6 py-6">
           <Outlet />
         </div>

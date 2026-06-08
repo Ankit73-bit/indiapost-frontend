@@ -55,7 +55,7 @@ import { useGetListQuery, useListListsQuery } from '@/store/api/listsApi';
 import { useListClientsQuery } from '@/store/api/clientsApi';
 import { useAppSelector } from '@/store';
 import { ALL_STATUSES } from '@/types';
-import { formatDate, formatDateTime, STATUS_CONFIG } from '@/lib/helpers';
+import { formatDate, formatDateTime, formatRelative, STATUS_CONFIG } from '@/lib/helpers';
 import type { Article, NormalizedStatus } from '@/types';
 
 // ─── Article detail sheet ─────────────────────────────────────────────────────
@@ -167,6 +167,11 @@ function ArticleSheet({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <ArticleStatusBadge status={article.normalizedStatus} />
+            {article.syncError && (
+              <span className="rounded border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-xs text-destructive">
+                Sync failed
+              </span>
+            )}
             {article.isTerminal && (
               <span className="rounded border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                 Terminal
@@ -177,6 +182,24 @@ function ArticleSheet({
 
         {/* Scrollable body */}
         <div className="flex-1 space-y-5 overflow-y-auto px-4 py-4">
+          {article.syncError && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-3">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-destructive">
+                <AlertCircle className="h-3.5 w-3.5" />
+                Last sync failed
+              </div>
+              <p className="mt-1.5 text-sm leading-snug">{article.syncError}</p>
+              {article.syncErrorAt && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {formatRelative(article.syncErrorAt)}
+                </p>
+              )}
+              <p className="mt-2 text-xs text-muted-foreground">
+                Trigger Sync on the list to retry automatically.
+              </p>
+            </div>
+          )}
+
           {article.latestEvent && (
             <div className="rounded-lg border border-primary/25 bg-primary/5 px-3 py-3">
               <div className="flex items-center gap-1.5 text-xs font-medium text-primary">
@@ -643,6 +666,7 @@ function ArticlesListView({
   const [statusFilter, setStatusFilter] = useState<
     NormalizedStatus | undefined
   >();
+  const [syncFailedOnly, setSyncFailedOnly] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
 
   useEffect(() => {
@@ -657,18 +681,22 @@ function ArticlesListView({
         listId,
         status: statusFilter,
         search: search || undefined,
+        syncFailed: syncFailedOnly || undefined,
         page,
         limit: 25,
       },
       { skip: false },
     );
 
-  const hasActiveFilters = Boolean(searchInput || statusFilter);
+  const hasActiveFilters = Boolean(
+    searchInput || statusFilter || syncFailedOnly,
+  );
 
   function clearFilters() {
     setSearchInput('');
     setSearch('');
     setStatusFilter(undefined);
+    setSyncFailedOnly(false);
     setPage(1);
   }
 
@@ -742,6 +770,19 @@ function ArticlesListView({
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <Button
+          variant={syncFailedOnly ? 'default' : 'outline'}
+          size="sm"
+          className="gap-1.5 shrink-0"
+          onClick={() => {
+            setSyncFailedOnly((v) => !v);
+            setPage(1);
+          }}
+        >
+          <AlertCircle className="h-3.5 w-3.5" />
+          Sync failed
+        </Button>
 
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -872,7 +913,17 @@ function ArticlesListView({
                     </td>
                   )}
                   <td className="px-4 py-3 whitespace-nowrap">
-                    <ArticleStatusBadge status={article.normalizedStatus} />
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <ArticleStatusBadge status={article.normalizedStatus} />
+                      {article.syncError && (
+                        <span
+                          className="rounded border border-destructive/30 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive"
+                          title={article.syncError}
+                        >
+                          Sync err
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td
                     className="px-4 py-3 text-xs text-muted-foreground max-w-[200px] truncate"

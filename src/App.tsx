@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { Provider } from 'react-redux';
 import { store } from '@/store';
 import { AppShell } from '@/components/layout/AppShell';
@@ -30,6 +31,7 @@ function SyncRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <Provider store={store}>
+      <Toaster position="top-right" richColors closeButton />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

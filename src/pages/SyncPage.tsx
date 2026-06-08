@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { RefreshCw, RotateCcw, Loader2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { RefreshCw, RotateCcw, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -28,9 +29,21 @@ import {
   useRetryFailedArticleMutation,
 } from '@/store/api/syncApi';
 import { formatRelative, getApiErrorMessage } from '@/lib/helpers';
-import type { SyncJob } from '@/types';
+import { toast } from '@/lib/toast';
+import type { SyncJob, SyncJobStatus } from '@/types';
 
 const ALL_LISTS = '__all__';
+const ALL_CLIENTS = '__all_clients__';
+const ALL_LISTS_FILTER = '__all_lists__';
+const ALL_STATUS = '__all_status__';
+
+const JOB_STATUSES: SyncJobStatus[] = [
+  'QUEUED',
+  'RUNNING',
+  'COMPLETED',
+  'PARTIAL',
+  'FAILED',
+];
 
 function syncJobPercent(job: SyncJob): number {
   if (!job.totalArticles) return 0;
@@ -47,30 +60,62 @@ function isActiveJob(job: SyncJob): boolean {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function SyncPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const filterClientId = searchParams.get('clientId') ?? '';
+  const filterListId = searchParams.get('listId') ?? '';
+  const filterStatus = searchParams.get('status') ?? '';
+  const activeTab =
+    searchParams.get('tab') === 'failed' ? 'failed' : 'jobs';
+
   const [jobsPage, setJobsPage] = useState(1);
   const [failedPage, setFailedPage] = useState(1);
   const [triggerDialogOpen, setTriggerDialogOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState('');
   const [selectedListId, setSelectedListId] = useState(ALL_LISTS);
   const [triggerError, setTriggerError] = useState('');
-  const [triggerSuccess, setTriggerSuccess] = useState('');
   const [pollJobs, setPollJobs] = useState(false);
+
+  function patchParams(updates: Record<string, string | null>) {
+    const next = new URLSearchParams(searchParams);
+    for (const [key, value] of Object.entries(updates)) {
+      if (!value) next.delete(key);
+      else next.set(key, value);
+    }
+    setSearchParams(next, { replace: true });
+  }
+
+  useEffect(() => {
+    setJobsPage(1);
+    setFailedPage(1);
+  }, [filterClientId, filterListId, filterStatus]);
 
   const { data: clientsData } = useListClientsQuery({ limit: 100 });
   const { data: listsData } = useListListsQuery({ limit: 100 });
+  const { data: filterListsData } = useListListsQuery(
+    { clientId: filterClientId || undefined, limit: 100 },
+    { skip: !filterClientId },
+  );
+
   const { data: jobsData, isLoading: jobsLoading } = useListSyncJobsQuery(
     {
       page: jobsPage,
       limit: 20,
-      listOnly: false,
+      listOnly: true,
+      clientId: filterClientId || undefined,
+      listId: filterListId || undefined,
+      status: (filterStatus as SyncJobStatus) || undefined,
     },
     { pollingInterval: pollJobs ? 3000 : 0 },
   );
+
   const { data: failedData, isLoading: failedLoading } =
     useListFailedArticlesQuery(
       {
         page: failedPage,
         limit: 20,
+        clientId: filterClientId || undefined,
+        listId: filterListId || undefined,
       },
       { pollingInterval: pollJobs ? 3000 : 0 },
     );
@@ -80,16 +125,15 @@ export function SyncPage() {
     { skip: !selectedClientId },
   );
 
-  const activeJobs =
-    jobsData?.data.filter((j) => isActiveJob(j)) ?? [];
+  const activeJobs = jobsData?.data.filter((j) => isActiveJob(j)) ?? [];
 
   useEffect(() => {
     setPollJobs(activeJobs.length > 0);
   }, [activeJobs.length]);
 
-  const listNameById = new Map(
-    listsData?.data.map((l) => [l._id, l.name]) ?? [],
-  );
+  const listNameById = new Map<string, string>();
+  for (const l of listsData?.data ?? []) listNameById.set(l._id, l.name);
+  for (const l of filterListsData?.data ?? []) listNameById.set(l._id, l.name);
 
   const [triggerSync, { isLoading: triggering }] = useTriggerSyncMutation();
   const [retryArticle] = useRetryFailedArticleMutation();
@@ -102,6 +146,10 @@ export function SyncPage() {
         l.status !== 'ARCHIVED',
     ) ?? [];
 
+  const hasJobFilters = Boolean(
+    filterClientId || filterListId || filterStatus,
+  );
+
   function handleClientChange(clientId: string) {
     setSelectedClientId(clientId);
     setSelectedListId(ALL_LISTS);
@@ -109,35 +157,40 @@ export function SyncPage() {
   }
 
   function openTriggerDialog() {
-    setSelectedClientId('');
-    setSelectedListId(ALL_LISTS);
+    setSelectedClientId(filterClientId);
+    setSelectedListId(filterListId || ALL_LISTS);
     setTriggerError('');
-    setTriggerSuccess('');
     setTriggerDialogOpen(true);
   }
 
   async function handleTrigger() {
     if (!selectedClientId) return;
     setTriggerError('');
-    setTriggerSuccess('');
     try {
       const body =
         selectedListId === ALL_LISTS
           ? { clientId: selectedClientId }
           : { clientId: selectedClientId, listId: selectedListId };
       const result = await triggerSync(body).unwrap();
-      setTriggerSuccess(result.message);
-      if (result.syncJobId) {
-        setPollJobs(true);
-      }
-      setTimeout(() => {
-        setTriggerDialogOpen(false);
-        setSelectedClientId('');
-        setSelectedListId(ALL_LISTS);
-        setTriggerSuccess('');
-      }, 1200);
+      toast.success(result.message);
+      if (result.syncJobId) setPollJobs(true);
+      setTriggerDialogOpen(false);
+      setSelectedClientId('');
+      setSelectedListId(ALL_LISTS);
     } catch (err) {
-      setTriggerError(getApiErrorMessage(err));
+      const msg = getApiErrorMessage(err);
+      setTriggerError(msg);
+      toast.error(msg);
+    }
+  }
+
+  async function handleRetry(articleId: string) {
+    try {
+      await retryArticle(articleId).unwrap();
+      toast.success('Retry enqueued');
+      setPollJobs(true);
+    } catch (err) {
+      toast.apiError(err, 'Failed to retry article');
     }
   }
 
@@ -158,6 +211,86 @@ export function SyncPage() {
         }
       />
 
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Select
+          value={filterClientId || ALL_CLIENTS}
+          onValueChange={(v) =>
+            patchParams({
+              clientId: v === ALL_CLIENTS ? null : v,
+              listId: null,
+            })
+          }
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All clients" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_CLIENTS}>All clients</SelectItem>
+            {clientsData?.data
+              .filter((c) => c.isActive)
+              .map((c) => (
+                <SelectItem key={c._id} value={c._id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filterListId || ALL_LISTS_FILTER}
+          onValueChange={(v) =>
+            patchParams({ listId: v === ALL_LISTS_FILTER ? null : v })
+          }
+          disabled={!filterClientId}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue
+              placeholder={filterClientId ? 'All lists' : 'Select client first'}
+            />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_LISTS_FILTER}>All lists</SelectItem>
+            {filterListsData?.data.map((l) => (
+              <SelectItem key={l._id} value={l._id}>
+                {l.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filterStatus || ALL_STATUS}
+          onValueChange={(v) =>
+            patchParams({ status: v === ALL_STATUS ? null : v })
+          }
+        >
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_STATUS}>All statuses</SelectItem>
+            {JOB_STATUSES.map((s) => (
+              <SelectItem key={s} value={s}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {hasJobFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              patchParams({ clientId: null, listId: null, status: null })
+            }
+          >
+            <X className="mr-1 h-3.5 w-3.5" /> Clear filters
+          </Button>
+        )}
+      </div>
+
       {activeJobs.length > 0 && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
           <p className="font-medium">
@@ -167,7 +300,10 @@ export function SyncPage() {
         </div>
       )}
 
-      <Tabs defaultValue="jobs">
+      <Tabs
+        value={activeTab}
+        onValueChange={(tab) => patchParams({ tab: tab === 'jobs' ? null : tab })}
+      >
         <TabsList className="mb-4">
           <TabsTrigger value="jobs">Sync Jobs</TabsTrigger>
           <TabsTrigger value="failed">
@@ -180,7 +316,6 @@ export function SyncPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* ── Sync Jobs ── */}
         <TabsContent value="jobs">
           <div className="rounded-lg border border-border bg-card">
             <table className="w-full text-sm">
@@ -223,7 +358,7 @@ export function SyncPage() {
                       colSpan={7}
                       className="px-4 py-8 text-center text-muted-foreground"
                     >
-                      No sync jobs yet.
+                      No sync jobs match your filters.
                     </td>
                   </tr>
                 )}
@@ -241,7 +376,8 @@ export function SyncPage() {
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {job.listId
-                        ? (listNameById.get(job.listId) ?? job.listId.slice(-6))
+                        ? (listNameById.get(job.listId) ??
+                          job.listId.slice(-6))
                         : '—'}
                     </td>
                     <td className="px-4 py-3">
@@ -253,7 +389,9 @@ export function SyncPage() {
                           <div className="h-1.5 w-full max-w-[140px] overflow-hidden rounded-full bg-muted">
                             <div
                               className={`h-full rounded-full transition-all duration-500 ${
-                                isActiveJob(job) ? 'bg-blue-500' : 'bg-muted-foreground/40'
+                                isActiveJob(job)
+                                  ? 'bg-blue-500'
+                                  : 'bg-muted-foreground/40'
                               }`}
                               style={{ width: `${syncJobPercent(job)}%` }}
                             />
@@ -285,7 +423,6 @@ export function SyncPage() {
           </div>
         </TabsContent>
 
-        {/* ── Failed Articles ── */}
         <TabsContent value="failed">
           <p className="mb-3 text-sm text-muted-foreground">
             Articles where the last sync attempt failed. Trigger Sync on the list
@@ -352,7 +489,7 @@ export function SyncPage() {
                         variant="ghost"
                         size="sm"
                         className="h-7 gap-1"
-                        onClick={() => retryArticle(fa.articleId)}
+                        onClick={() => handleRetry(fa.articleId)}
                       >
                         <RotateCcw className="h-3 w-3" /> Retry
                       </Button>
@@ -373,7 +510,6 @@ export function SyncPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Trigger dialog */}
       <Dialog open={triggerDialogOpen} onOpenChange={setTriggerDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -434,25 +570,12 @@ export function SyncPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                {clientListsData?.data.some(
-                  (l) => l.status === 'IMPORTING' || l.status === 'SYNCING',
-                ) && (
-                  <p className="text-xs text-muted-foreground">
-                    Lists currently importing or syncing are excluded from this
-                    picker.
-                  </p>
-                )}
               </div>
             )}
 
             {triggerError && (
               <div className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {triggerError}
-              </div>
-            )}
-            {triggerSuccess && (
-              <div className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-                {triggerSuccess}
               </div>
             )}
           </div>

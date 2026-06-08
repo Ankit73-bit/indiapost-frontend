@@ -316,6 +316,7 @@ export interface ListArticlesQuery {
   listId?: string;
   status?: NormalizedStatus;
   search?: string;
+  syncFailed?: boolean;
   page?: number;
   limit?: number;
 }

@@ -33,6 +33,8 @@ import {
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
+import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
+import { toast } from '@/lib/toast';
 import { ListStatusBadge } from '@/components/shared/StatusBadge';
 import { Pagination } from '@/components/shared/Pagination';
 import { useAppSelector } from '@/store';
@@ -98,6 +100,11 @@ export function ListsPage() {
   const [uploadingListId, setUploadingListId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<List | null>(null);
   const [deleteError, setDeleteError] = useState('');
+  const [cancelImportTarget, setCancelImportTarget] = useState<List | null>(
+    null,
+  );
+  const [cancelSyncTarget, setCancelSyncTarget] = useState<List | null>(null);
+  const [cancelError, setCancelError] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [pollActiveOps, setPollActiveOps] = useState(false);
 
@@ -124,8 +131,9 @@ export function ListsPage() {
   const [unarchiveList] = useUnarchiveListMutation();
   const [deleteList, { isLoading: deleting }] = useDeleteListMutation();
   const [uploadFile, { isLoading: uploading }] = useUploadListFileMutation();
-  const [cancelImport] = useCancelImportMutation();
-  const [cancelSync] = useCancelSyncMutation();
+  const [cancelImport, { isLoading: cancellingImport }] =
+    useCancelImportMutation();
+  const [cancelSync, { isLoading: cancellingSync }] = useCancelSyncMutation();
 
   const {
     register,
@@ -166,8 +174,10 @@ export function ListsPage() {
     try {
       if (editing) {
         await updateList({ listId: editing._id, body: values }).unwrap();
+        toast.success('List updated');
       } else {
         await createList(values).unwrap();
+        toast.success('List created');
       }
       setDialogOpen(false);
       reset();
@@ -184,8 +194,11 @@ export function ListsPage() {
     try {
       await uploadFile({ listId, file }).unwrap();
       setPollActiveOps(true);
+      toast.success('Import started — progress updates on this page');
     } catch (err) {
-      setUploadError(getApiErrorMessage(err, 'Failed to start import.'));
+      const msg = getApiErrorMessage(err, 'Failed to start import.');
+      setUploadError(msg);
+      toast.error(msg);
     } finally {
       setUploadingListId(null);
     }
@@ -199,8 +212,33 @@ export function ListsPage() {
     try {
       await deleteList(deleteTarget._id).unwrap();
       setDeleteTarget(null);
+      toast.success('List deleted permanently');
     } catch (err) {
       setDeleteError(getApiErrorMessage(err, 'Failed to delete list.'));
+    }
+  }
+
+  async function handleCancelImport() {
+    if (!cancelImportTarget) return;
+    setCancelError('');
+    try {
+      await cancelImport(cancelImportTarget._id).unwrap();
+      setCancelImportTarget(null);
+      toast.success('Import cancelled — you can upload again');
+    } catch (err) {
+      setCancelError(getApiErrorMessage(err, 'Failed to cancel import.'));
+    }
+  }
+
+  async function handleCancelSync() {
+    if (!cancelSyncTarget) return;
+    setCancelError('');
+    try {
+      await cancelSync(cancelSyncTarget._id).unwrap();
+      setCancelSyncTarget(null);
+      toast.success('Sync reset — you can trigger sync again');
+    } catch (err) {
+      setCancelError(getApiErrorMessage(err, 'Failed to reset sync.'));
     }
   }
 
@@ -412,7 +450,7 @@ export function ListsPage() {
                         size="sm"
                         className="h-7 w-7 p-0 text-destructive"
                         title="Cancel stuck import"
-                        onClick={() => cancelImport(list._id)}
+                        onClick={() => setCancelImportTarget(list)}
                       >
                         <XCircle className="h-3.5 w-3.5" />
                       </Button>
@@ -423,7 +461,7 @@ export function ListsPage() {
                         size="sm"
                         className="h-7 w-7 p-0 text-destructive"
                         title="Reset stuck sync"
-                        onClick={() => cancelSync(list._id)}
+                        onClick={() => setCancelSyncTarget(list)}
                       >
                         <XCircle className="h-3.5 w-3.5" />
                       </Button>
@@ -693,6 +731,36 @@ export function ListsPage() {
         entityName={deleteTarget?.name ?? ''}
         isLoading={deleting}
         error={deleteError}
+      />
+
+      <ConfirmActionDialog
+        open={Boolean(cancelImportTarget)}
+        onClose={() => {
+          setCancelImportTarget(null);
+          setCancelError('');
+        }}
+        onConfirm={handleCancelImport}
+        title="Cancel import"
+        description="Stops tracking this import in the UI. The server job may still finish in the background. You can upload the file again afterward."
+        entityName={cancelImportTarget?.name ?? ''}
+        confirmLabel="Cancel import"
+        isLoading={cancellingImport}
+        error={cancelError}
+      />
+
+      <ConfirmActionDialog
+        open={Boolean(cancelSyncTarget)}
+        onClose={() => {
+          setCancelSyncTarget(null);
+          setCancelError('');
+        }}
+        onConfirm={handleCancelSync}
+        title="Reset sync status"
+        description="Clears the stuck syncing state for this list. Trigger Sync again when ready."
+        entityName={cancelSyncTarget?.name ?? ''}
+        confirmLabel="Reset sync"
+        isLoading={cancellingSync}
+        error={cancelError}
       />
     </div>
   );
