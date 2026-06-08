@@ -528,7 +528,7 @@ export function ListsPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDeleteList}
         title="Delete list"
-        description="This permanently deletes the list, all its articles, and tracking history. This cannot be undone."
+        description="This permanently deletes the list, its uploaded file, all articles, and tracking history. This cannot be undone."
         entityName={deleteTarget?.name ?? ''}
         isLoading={deleting}
         error={deleteError}
