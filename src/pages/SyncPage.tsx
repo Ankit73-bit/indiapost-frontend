@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, RotateCcw, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,9 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { SyncJobStatusBadge } from '@/components/shared/StatusBadge';
 import { Pagination } from '@/components/shared/Pagination';
 import { useListClientsQuery } from '@/store/api/clientsApi';
-import { useListListsQuery } from '@/store/api/listsApi';
+import { useListListsQuery, listsApi } from '@/store/api/listsApi';
+import { useAppDispatch } from '@/store';
+import { ClientFilterSelect } from '@/components/shared/ClientFilterSelect';
 import {
   useTriggerSyncMutation,
   useListSyncJobsQuery,
@@ -33,7 +35,6 @@ import { toast } from '@/lib/toast';
 import type { SyncJob, SyncJobStatus } from '@/types';
 
 const ALL_LISTS = '__all__';
-const ALL_CLIENTS = '__all_clients__';
 const ALL_LISTS_FILTER = '__all_lists__';
 const ALL_STATUS = '__all_status__';
 
@@ -60,7 +61,11 @@ function isActiveJob(job: SyncJob): boolean {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function SyncPage() {
+  const dispatch = useAppDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [resolvedListNames, setResolvedListNames] = useState<
+    Record<string, string>
+  >({});
 
   const filterClientId = searchParams.get('clientId') ?? '';
   const filterListId = searchParams.get('listId') ?? '';
@@ -131,9 +136,31 @@ export function SyncPage() {
     setPollJobs(activeJobs.length > 0);
   }, [activeJobs.length]);
 
-  const listNameById = new Map<string, string>();
-  for (const l of listsData?.data ?? []) listNameById.set(l._id, l.name);
-  for (const l of filterListsData?.data ?? []) listNameById.set(l._id, l.name);
+  const listNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const l of listsData?.data ?? []) map.set(l._id, l.name);
+    for (const l of filterListsData?.data ?? []) map.set(l._id, l.name);
+    for (const [id, name] of Object.entries(resolvedListNames)) map.set(id, name);
+    return map;
+  }, [listsData?.data, filterListsData?.data, resolvedListNames]);
+
+  useEffect(() => {
+    if (!jobsData?.data.length) return;
+
+    const known = new Set(listNameById.keys());
+    const missing = jobsData.data
+      .map((j) => j.listId)
+      .filter((id): id is string => Boolean(id && !known.has(id)));
+
+    for (const listId of [...new Set(missing)]) {
+      dispatch(listsApi.endpoints.getList.initiate(listId))
+        .unwrap()
+        .then((list) => {
+          setResolvedListNames((prev) => ({ ...prev, [list._id]: list.name }));
+        })
+        .catch(() => {});
+    }
+  }, [jobsData?.data, dispatch, listNameById]);
 
   const [triggerSync, { isLoading: triggering }] = useTriggerSyncMutation();
   const [retryArticle] = useRetryFailedArticleMutation();
@@ -213,29 +240,17 @@ export function SyncPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <Select
-          value={filterClientId || ALL_CLIENTS}
-          onValueChange={(v) =>
+        <ClientFilterSelect
+          clients={clientsData?.data.filter((c) => c.isActive) ?? []}
+          value={filterClientId || undefined}
+          className="w-[180px]"
+          onChange={(clientId) =>
             patchParams({
-              clientId: v === ALL_CLIENTS ? null : v,
+              clientId: clientId ?? null,
               listId: null,
             })
           }
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All clients" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_CLIENTS}>All clients</SelectItem>
-            {clientsData?.data
-              .filter((c) => c.isActive)
-              .map((c) => (
-                <SelectItem key={c._id} value={c._id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-          </SelectContent>
-        </Select>
+        />
 
         <Select
           value={filterListId || ALL_LISTS_FILTER}

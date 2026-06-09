@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -11,6 +11,7 @@ import {
   Trash2,
   XCircle,
   FileText,
+  RefreshCw,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,9 +36,20 @@ import {
 import { PageHeader } from '@/components/shared/PageHeader';
 import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
+import { ClientFilterSelect } from '@/components/shared/ClientFilterSelect';
+import { OperationProgressBar } from '@/components/shared/OperationProgressBar';
 import { toast } from '@/lib/toast';
+import { downloadListExport } from '@/lib/exportList';
+import {
+  importPercent,
+  syncPercent,
+  isProgressStuck,
+  importResultSummary,
+} from '@/lib/listProgress';
 import { ListStatusBadge } from '@/components/shared/StatusBadge';
 import { Pagination } from '@/components/shared/Pagination';
+import { usePollListsWhileActive } from '@/hooks/usePollListsWhileActive';
+import { useTriggerSyncMutation } from '@/store/api/syncApi';
 import { useAppSelector } from '@/store';
 import { useListClientsQuery } from '@/store/api/clientsApi';
 import {
@@ -67,26 +79,6 @@ const schema = z.object({
 });
 type FormValues = z.infer<typeof schema>;
 
-function importPercent(list: List): number {
-  const p = list.importProgress;
-  if (!p || p.totalRows <= 0) return 0;
-  return Math.min(100, Math.round((p.processedRows / p.totalRows) * 100));
-}
-
-function syncPercent(list: List): number {
-  const p = list.syncProgress;
-  if (!p || p.totalArticles <= 0) return 0;
-  return Math.min(100, Math.round((p.processedCount / p.totalArticles) * 100));
-}
-
-function isProgressStuck(
-  progress?: { updatedAt?: string; startedAt: string },
-): boolean {
-  if (!progress) return false;
-  const last = progress.updatedAt ?? progress.startedAt;
-  return Date.now() - new Date(last).getTime() > 5 * 60 * 1000;
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function ListsPage() {
@@ -105,26 +97,27 @@ export function ListsPage() {
     null,
   );
   const [cancelSyncTarget, setCancelSyncTarget] = useState<List | null>(null);
+  const [syncTarget, setSyncTarget] = useState<List | null>(null);
   const [cancelError, setCancelError] = useState('');
   const [uploadError, setUploadError] = useState('');
-  const [pollActiveOps, setPollActiveOps] = useState(false);
 
   const { data: clientsData } = useListClientsQuery({ limit: 100 });
-  const { data, isLoading } = useListListsQuery(
-    {
-      clientId: clientIdFilter,
-      page,
-      limit: 20,
-    },
-    { pollingInterval: pollActiveOps ? 3000 : 0 },
-  );
+  const { data, isLoading } = usePollListsWhileActive({
+    clientId: clientIdFilter,
+    page,
+    limit: 20,
+  });
 
   const importingLists = data?.data.filter((l) => l.status === 'IMPORTING') ?? [];
   const syncingLists = data?.data.filter((l) => l.status === 'SYNCING') ?? [];
 
-  useEffect(() => {
-    setPollActiveOps(importingLists.length > 0 || syncingLists.length > 0);
-  }, [importingLists.length, syncingLists.length]);
+  function setClientFilter(clientId: string | undefined) {
+    const next = new URLSearchParams(searchParams);
+    if (clientId) next.set('clientId', clientId);
+    else next.delete('clientId');
+    setSearchParams(next, { replace: true });
+    setPage(1);
+  }
 
   const [createList, { isLoading: creating }] = useCreateListMutation();
   const [updateList, { isLoading: updating }] = useUpdateListMutation();
@@ -135,6 +128,7 @@ export function ListsPage() {
   const [cancelImport, { isLoading: cancellingImport }] =
     useCancelImportMutation();
   const [cancelSync, { isLoading: cancellingSync }] = useCancelSyncMutation();
+  const [triggerSync, { isLoading: triggeringSync }] = useTriggerSyncMutation();
 
   const {
     register,
@@ -194,7 +188,6 @@ export function ListsPage() {
     setUploadError('');
     try {
       await uploadFile({ listId, file }).unwrap();
-      setPollActiveOps(true);
       toast.success('Import started — progress updates on this page');
     } catch (err) {
       const msg = getApiErrorMessage(err, 'Failed to start import.');
@@ -246,20 +239,26 @@ export function ListsPage() {
   async function handleExport(listId: string, listName: string) {
     setExportingListId(listId);
     try {
-      const token = localStorage.getItem('ip_token');
-      const url = `${import.meta.env.VITE_API_URL ?? 'http://localhost:5000'}/api/v1/lists/${listId}/export`;
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Export failed');
-      const blob = await res.blob();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `${listName.replace(/[^a-z0-9]/gi, '_')}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      await downloadListExport(listId, listName);
+      toast.success('Export downloaded');
+    } catch {
+      toast.error('Export failed');
     } finally {
       setExportingListId(null);
+    }
+  }
+
+  async function handleTriggerSync() {
+    if (!syncTarget) return;
+    try {
+      const result = await triggerSync({
+        clientId: syncTarget.clientId,
+        listId: syncTarget._id,
+      }).unwrap();
+      toast.success(result.message);
+      setSyncTarget(null);
+    } catch (err) {
+      toast.apiError(err, 'Failed to trigger sync');
     }
   }
 
@@ -269,9 +268,18 @@ export function ListsPage() {
         title="Lists"
         description="Batches of postal articles grouped by dispatch event."
         actions={
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" /> New List
-          </Button>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <ClientFilterSelect
+                clients={clientsData?.data ?? []}
+                value={clientIdFilter}
+                onChange={setClientFilter}
+              />
+            )}
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" /> New List
+            </Button>
+          </div>
         }
       />
 
@@ -383,45 +391,35 @@ export function ListsPage() {
                 <td className="px-4 py-3">
                   <ListStatusBadge status={list.status} />
                   {list.status === 'IMPORTING' && list.importProgress && (
-                    <div className="mt-2 space-y-1">
-                      <div className="h-1.5 w-full max-w-[140px] overflow-hidden rounded-full bg-amber-200">
-                        <div
-                          className="h-full rounded-full bg-amber-500 transition-all duration-500"
-                          style={{ width: `${importPercent(list)}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {list.importProgress.processedRows.toLocaleString()} /{' '}
-                        {list.importProgress.totalRows.toLocaleString()} rows
-                        {(list.importProgress.failedRows ?? 0) > 0 && (
-                          <span className="text-destructive">
-                            {' '}
-                            · {list.importProgress.failedRows} failed
-                          </span>
-                        )}
-                      </p>
+                    <div className="mt-2">
+                      <OperationProgressBar
+                        variant="import"
+                        percent={importPercent(list)}
+                        label={`${list.importProgress.processedRows.toLocaleString()} / ${list.importProgress.totalRows.toLocaleString()} rows${
+                          (list.importProgress.failedRows ?? 0) > 0
+                            ? ` · ${list.importProgress.failedRows} failed`
+                            : ''
+                        }`}
+                      />
                     </div>
                   )}
                   {list.status === 'SYNCING' && list.syncProgress && (
-                    <div className="mt-2 space-y-1">
-                      <div className="h-1.5 w-full max-w-[140px] overflow-hidden rounded-full bg-blue-200">
-                        <div
-                          className="h-full rounded-full bg-blue-500 transition-all duration-500"
-                          style={{ width: `${syncPercent(list)}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {list.syncProgress.processedCount.toLocaleString()} /{' '}
-                        {list.syncProgress.totalArticles.toLocaleString()}{' '}
-                        articles
-                        {list.syncProgress.failedCount > 0 && (
-                          <span className="text-destructive">
-                            {' '}
-                            · {list.syncProgress.failedCount} failed
-                          </span>
-                        )}
-                      </p>
+                    <div className="mt-2">
+                      <OperationProgressBar
+                        variant="sync"
+                        percent={syncPercent(list)}
+                        label={`${list.syncProgress.processedCount.toLocaleString()} / ${list.syncProgress.totalArticles.toLocaleString()} articles${
+                          list.syncProgress.failedCount > 0
+                            ? ` · ${list.syncProgress.failedCount} failed`
+                            : ''
+                        }`}
+                      />
                     </div>
+                  )}
+                  {list.status === 'ACTIVE' && importResultSummary(list) && (
+                    <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
+                      {importResultSummary(list)}
+                    </p>
                   )}
                   {list.importError && (
                     <p className="mt-1 max-w-[180px] text-xs text-destructive">
@@ -509,12 +507,35 @@ export function ListsPage() {
                         </span>
                       </Button>
                     </label>
+                    {isAdmin &&
+                      list.status !== 'IMPORTING' &&
+                      list.status !== 'SYNCING' &&
+                      list.status !== 'ARCHIVED' &&
+                      list.totalArticles > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          title="Trigger sync for this list"
+                          disabled={triggeringSync}
+                          onClick={() => setSyncTarget(list)}
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     {/* Export */}
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-7 w-7 p-0"
-                      disabled={exportingListId === list._id}
+                      disabled={
+                        exportingListId === list._id || list.totalArticles === 0
+                      }
+                      title={
+                        list.totalArticles === 0
+                          ? 'No articles to export'
+                          : 'Export list to Excel'
+                      }
                       onClick={() => handleExport(list._id, list.name)}
                     >
                       {exportingListId === list._id ? (
@@ -776,6 +797,17 @@ export function ListsPage() {
         confirmLabel="Reset sync"
         isLoading={cancellingSync}
         error={cancelError}
+      />
+
+      <ConfirmActionDialog
+        open={Boolean(syncTarget)}
+        onClose={() => setSyncTarget(null)}
+        onConfirm={handleTriggerSync}
+        title="Trigger sync"
+        description="Starts India Post tracking sync for all non-terminal articles in this list."
+        entityName={syncTarget?.name ?? ''}
+        confirmLabel="Start sync"
+        isLoading={triggeringSync}
       />
     </div>
   );

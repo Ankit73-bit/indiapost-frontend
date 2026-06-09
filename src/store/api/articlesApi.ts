@@ -56,14 +56,14 @@ export const articlesApi = baseApi.injectEndpoints({
       }),
     }),
 
-    getArticleStats: build.query<ArticleStats, string>({
+    getArticleStats: build.query<ArticleStats, string | undefined>({
       query: (clientId) => ({
         url: '/api/v1/articles/stats',
-        params: { clientId },
+        params: clientId ? { clientId } : {},
       }),
       transformResponse: (res: ApiSuccess<ArticleStats>) => res.data,
       providesTags: (_r, _e, clientId) => [
-        { type: 'Article', id: `STATS_${clientId}` },
+        { type: 'Article', id: `STATS_${clientId ?? 'GLOBAL'}` },
       ],
     }),
   }),

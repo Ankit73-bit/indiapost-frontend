@@ -1,41 +1,19 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAppSelector } from '@/store';
-import { useListListsQuery } from '@/store/api/listsApi';
-import type { List } from '@/types';
-
-function importPercent(list: List): number {
-  const p = list.importProgress;
-  if (!p || p.totalRows <= 0) return 0;
-  return Math.min(100, Math.round((p.processedRows / p.totalRows) * 100));
-}
-
-function syncPercent(list: List): number {
-  const p = list.syncProgress;
-  if (!p || p.totalArticles <= 0) return 0;
-  return Math.min(100, Math.round((p.processedCount / p.totalArticles) * 100));
-}
+import { usePollListsWhileActive } from '@/hooks/usePollListsWhileActive';
+import { importPercent, syncPercent } from '@/lib/listProgress';
 
 export function OperationsBanner() {
   const user = useAppSelector((s) => s.auth.user);
   const isAdmin = user?.role === 'admin';
   const clientId = !isAdmin ? (user?.clientId ?? undefined) : undefined;
 
-  const [poll, setPoll] = useState(false);
-
-  const { data } = useListListsQuery(
-    { clientId, limit: 100 },
-    { pollingInterval: poll ? 3000 : 0 },
-  );
+  const { data } = usePollListsWhileActive({ clientId, limit: 100 });
 
   const importing = data?.data.filter((l) => l.status === 'IMPORTING') ?? [];
   const syncing = data?.data.filter((l) => l.status === 'SYNCING') ?? [];
   const activeCount = importing.length + syncing.length;
-
-  useEffect(() => {
-    setPoll(activeCount > 0);
-  }, [activeCount]);
 
   if (activeCount === 0) return null;
 
@@ -56,9 +34,7 @@ export function OperationsBanner() {
             <span className="font-medium">{list.name}</span>
             <span className="text-amber-800/80">
               Importing
-              {list.importProgress
-                ? ` ${importPercent(list)}%`
-                : ''}
+              {list.importProgress ? ` ${importPercent(list)}%` : ''}
             </span>
           </Link>
         ))}

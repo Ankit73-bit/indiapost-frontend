@@ -61,6 +61,9 @@ import { ALL_STATUSES } from '@/types';
 import { formatDate, formatDateTime, formatRelative, STATUS_CONFIG, getApiErrorMessage } from '@/lib/helpers';
 import { downloadPdfFile, viewPdfInNewTab } from '@/lib/pdfFiles';
 import { toast } from '@/lib/toast';
+import { downloadListExport } from '@/lib/exportList';
+import { importPercent } from '@/lib/listProgress';
+import { OperationProgressBar } from '@/components/shared/OperationProgressBar';
 import type { Article, NormalizedStatus } from '@/types';
 import { ListPdfsDialog } from '@/components/lists/ListPdfsDialog';
 
@@ -779,13 +782,21 @@ function ArticlesListView({
   const [pdfsOpen, setPdfsOpen] = useState(
     () => new URLSearchParams(window.location.search).get('pdfs') === '1',
   );
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const { data: listMeta } = useGetListQuery(listId);
+  const [pollListImport, setPollListImport] = useState(false);
+  const { data: listMeta } = useGetListQuery(listId, {
+    pollingInterval: pollListImport ? 3000 : 0,
+  });
+
+  useEffect(() => {
+    setPollListImport(listMeta?.status === 'IMPORTING');
+  }, [listMeta?.status]);
 
   const { data, isLoading, isError, isFetching, refetch } =
     useListArticlesQuery(
@@ -831,6 +842,23 @@ function ArticlesListView({
     }
     return set;
   }, [listMeta?.generatedPdfs]);
+
+  const isImporting = listMeta?.status === 'IMPORTING';
+
+  async function handleExportFiltered() {
+    setExporting(true);
+    try {
+      await downloadListExport(listId, listMeta?.name ?? 'list', {
+        status: statusFilter,
+        syncFailed: syncFailedOnly || undefined,
+      });
+      toast.success('Export downloaded');
+    } catch {
+      toast.error('Export failed');
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <>
@@ -922,6 +950,28 @@ function ArticlesListView({
           </Button>
         )}
 
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5 shrink-0"
+          disabled={exporting || (data?.meta?.total ?? 0) === 0}
+          title={
+            (data?.meta?.total ?? 0) === 0
+              ? 'No articles to export'
+              : hasActiveFilters
+                ? 'Export filtered articles'
+                : 'Export all articles'
+          }
+          onClick={handleExportFiltered}
+        >
+          {exporting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Download className="h-3.5 w-3.5" />
+          )}
+          Export
+        </Button>
+
         {data?.meta && (
           <span className="ml-auto text-xs text-muted-foreground shrink-0">
             {data.meta.total.toLocaleString()} article
@@ -995,20 +1045,55 @@ function ArticlesListView({
                     colSpan={6 + extraCols}
                     className="px-4 py-12 text-center"
                   >
-                    <p className="text-muted-foreground">
-                      {hasActiveFilters
-                        ? 'No articles match your filters.'
-                        : 'No articles in this list yet.'}
-                    </p>
-                    {hasActiveFilters && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="mt-1 h-auto p-0"
-                        onClick={clearFilters}
-                      >
-                        Clear filters
-                      </Button>
+                    {isImporting && !hasActiveFilters ? (
+                      <div className="mx-auto max-w-sm space-y-3">
+                        <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
+                        <p className="font-medium">Import in progress</p>
+                        <p className="text-sm text-muted-foreground">
+                          Articles appear here as rows are processed. You can
+                          leave this page — import continues on the server.
+                        </p>
+                        {listMeta?.importProgress && (
+                          <OperationProgressBar
+                            variant="import"
+                            percent={importPercent(listMeta)}
+                            label={`${listMeta.importProgress.processedRows.toLocaleString()} / ${listMeta.importProgress.totalRows.toLocaleString()} rows`}
+                            className="mx-auto max-w-[200px]"
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-muted-foreground">
+                          {hasActiveFilters
+                            ? 'No articles match your filters.'
+                            : 'No articles in this list yet.'}
+                        </p>
+                        {hasActiveFilters && (
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="mt-1 h-auto p-0"
+                            onClick={clearFilters}
+                          >
+                            Clear filters
+                          </Button>
+                        )}
+                        {syncFailedOnly && (
+                          <Button
+                            variant="link"
+                            size="sm"
+                            className="mt-1 h-auto p-0"
+                            asChild
+                          >
+                            <Link
+                              to={`/sync?tab=failed&clientId=${clientId}&listId=${listId}`}
+                            >
+                              View on Sync page
+                            </Link>
+                          </Button>
+                        )}
+                      </>
                     )}
                   </td>
                 </tr>
