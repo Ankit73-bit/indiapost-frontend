@@ -71,6 +71,18 @@ export const clientsApi = baseApi.injectEndpoints({
       ],
     }),
 
+    reactivateClient: build.mutation<Client, string>({
+      query: (clientId) => ({
+        url: `/api/v1/clients/${clientId}/reactivate`,
+        method: 'POST',
+      }),
+      transformResponse: (res: ApiSuccess<Client>) => res.data,
+      invalidatesTags: (_r, _e, clientId) => [
+        { type: 'Client', id: clientId },
+        { type: 'Client', id: 'LIST' },
+      ],
+    }),
+
     deleteClient: build.mutation<{ deleted: boolean; clientId: string }, string>(
       {
         query: (clientId) => ({
@@ -98,5 +110,6 @@ export const {
   useCreateClientMutation,
   useUpdateClientMutation,
   useDeactivateClientMutation,
+  useReactivateClientMutation,
   useDeleteClientMutation,
 } = clientsApi;

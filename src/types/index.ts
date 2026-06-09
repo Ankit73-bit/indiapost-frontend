@@ -145,7 +145,7 @@ export interface ListClientsQuery {
 
 // ─── List ─────────────────────────────────────────────────────────────────────
 
-export type NoticeType = 'DEMAND' | 'LEGAL' | 'REMINDER' | 'CUSTOM';
+export type NoticeType = string;
 export type ListStatus =
   | 'DRAFT'
   | 'IMPORTING'
@@ -253,8 +253,8 @@ export interface CreateListBody {
   clientId: string;
   name: string;
   slug: string;
-  noticeName?: string;
-  noticeType?: NoticeType;
+  noticeName: string;
+  noticeType: string;
   noticeDate: string;
   dispatchDate: string;
   description?: string;
@@ -272,6 +272,10 @@ export interface UpdateListBody {
 export interface ListListsQuery {
   clientId?: string;
   status?: ListStatus;
+  search?: string;
+  year?: number;
+  month?: number;
+  noticeType?: string;
   page?: number;
   limit?: number;
 }

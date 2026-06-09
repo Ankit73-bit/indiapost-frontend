@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, PowerOff, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Pencil, PowerOff, Power, Trash2, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -22,8 +22,10 @@ import {
   useCreateClientMutation,
   useUpdateClientMutation,
   useDeactivateClientMutation,
+  useReactivateClientMutation,
   useDeleteClientMutation,
 } from '@/store/api/clientsApi';
+import { toast } from '@/lib/toast';
 import { toSlug, formatDate, getApiErrorMessage } from '@/lib/helpers';
 import type { Client } from '@/types';
 
@@ -54,6 +56,7 @@ export function ClientsPage() {
   const [createClient, { isLoading: creating }] = useCreateClientMutation();
   const [updateClient, { isLoading: updating }] = useUpdateClientMutation();
   const [deactivateClient] = useDeactivateClientMutation();
+  const [reactivateClient] = useReactivateClientMutation();
   const [deleteClient, { isLoading: deleting }] = useDeleteClientMutation();
 
   const {
@@ -213,15 +216,39 @@ export function ClientsPage() {
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    {client.isActive && (
+                    {client.isActive ? (
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 w-7 p-0 text-muted-foreground"
                         title="Deactivate client"
-                        onClick={() => deactivateClient(client._id)}
+                        onClick={async () => {
+                          try {
+                            await deactivateClient(client._id).unwrap();
+                            toast.success('Client deactivated');
+                          } catch (err) {
+                            toast.apiError(err, 'Failed to deactivate client');
+                          }
+                        }}
                       >
                         <PowerOff className="h-3.5 w-3.5" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-primary"
+                        title="Reactivate client"
+                        onClick={async () => {
+                          try {
+                            await reactivateClient(client._id).unwrap();
+                            toast.success('Client reactivated');
+                          } catch (err) {
+                            toast.apiError(err, 'Failed to reactivate client');
+                          }
+                        }}
+                      >
+                        <Power className="h-3.5 w-3.5" />
                       </Button>
                     )}
                     <Button

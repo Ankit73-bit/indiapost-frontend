@@ -119,7 +119,7 @@ export function DashboardPage() {
         actions={
           isAdmin ? (
             <ClientFilterSelect
-              clients={clientsData?.data ?? []}
+              clients={clientsData?.data.filter((c) => c.isActive) ?? []}
               value={dashboardClientId}
               onChange={setDashboardClient}
             />
