@@ -263,7 +263,7 @@ export interface CreateListBody {
 export interface UpdateListBody {
   name?: string;
   noticeName?: string;
-  noticeType?: NoticeType;
+  noticeType?: string;
   noticeDate?: string;
   dispatchDate?: string;
   description?: string;

@@ -13,9 +13,12 @@ export const listsApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     listLists: build.query<
       { data: List[]; meta?: PaginationMeta },
-      ListListsQuery | void
+      ListListsQuery | undefined
     >({
-      query: (params) => ({ url: '/api/v1/lists', params: params ?? {} }),
+      query: (params) => ({
+        url: '/api/v1/lists',
+        params: params ?? ({} satisfies ListListsQuery),
+      }),
       transformResponse: (res: ApiSuccess<List[]>) => ({
         data: res.data,
         meta: res.meta,
@@ -35,10 +38,19 @@ export const listsApi = baseApi.injectEndpoints({
       providesTags: (_r, _e, id) => [{ type: 'List', id }],
     }),
 
+    listNoticeTypes: build.query<string[], void>({
+      query: () => '/api/v1/lists/notice-types',
+      transformResponse: (res: ApiSuccess<string[]>) => res.data,
+      providesTags: [{ type: 'List', id: 'NOTICE_TYPES' }],
+    }),
+
     createList: build.mutation<List, CreateListBody>({
       query: (body) => ({ url: '/api/v1/lists', method: 'POST', body }),
       transformResponse: (res: ApiSuccess<List>) => res.data,
-      invalidatesTags: [{ type: 'List', id: 'LIST' }],
+      invalidatesTags: [
+        { type: 'List', id: 'LIST' },
+        { type: 'List', id: 'NOTICE_TYPES' },
+      ],
     }),
 
     updateList: build.mutation<List, { listId: string; body: UpdateListBody }>({
@@ -51,6 +63,7 @@ export const listsApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { listId }) => [
         { type: 'List', id: listId },
         { type: 'List', id: 'LIST' },
+        { type: 'List', id: 'NOTICE_TYPES' },
       ],
     }),
 
@@ -165,6 +178,7 @@ export const listsApi = baseApi.injectEndpoints({
 
 export const {
   useListListsQuery,
+  useListNoticeTypesQuery,
   useGetListQuery,
   useCreateListMutation,
   useUpdateListMutation,

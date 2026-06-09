@@ -30,7 +30,7 @@ import { OperationProgressBar } from '@/components/shared/OperationProgressBar';
 import { ListActionsMenu } from '@/components/lists/ListActionsMenu';
 import { toast } from '@/lib/toast';
 import { downloadListExport } from '@/lib/exportList';
-import { buildListName, buildListSlug } from '@/lib/listNaming';
+import { buildListName, buildListSlug, mergeNoticeTypes } from '@/lib/listNaming';
 import {
   importPercent,
   syncPercent,
@@ -44,6 +44,7 @@ import { useTriggerSyncMutation } from '@/store/api/syncApi';
 import { useAppSelector } from '@/store';
 import { useListClientsQuery } from '@/store/api/clientsApi';
 import {
+  useListNoticeTypesQuery,
   useCreateListMutation,
   useUpdateListMutation,
   useArchiveListMutation,
@@ -100,9 +101,21 @@ export function ListsPage() {
   const isAdmin = authUser?.role === 'admin';
 
   const clientIdFilter = searchParams.get('clientId') ?? undefined;
-  const filterYear = searchParams.get('year') ?? '';
+  const yearParam = searchParams.get('year');
+  const showAllYears = yearParam === 'all';
+  const filterYear = showAllYears
+    ? String(currentYear())
+    : (yearParam ?? String(currentYear()));
   const filterMonth = searchParams.get('month') ?? '';
   const filterNoticeType = searchParams.get('noticeType') ?? '';
+
+  useEffect(() => {
+    if (!searchParams.has('year')) {
+      const next = new URLSearchParams(searchParams);
+      next.set('year', String(currentYear()));
+      setSearchParams(next, { replace: true });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState(
@@ -151,10 +164,16 @@ export function ListsPage() {
     : undefined;
   const customerInactive = Boolean(customerClient && !customerClient.isActive);
 
+  const { data: noticeTypesData } = useListNoticeTypesQuery();
+  const noticeTypeOptions = useMemo(
+    () => mergeNoticeTypes(noticeTypesData),
+    [noticeTypesData],
+  );
+
   const { data, isLoading, isFetching } = usePollListsWhileActive({
     clientId: clientIdFilter,
     search: search || undefined,
-    year: filterYear ? Number(filterYear) : undefined,
+    year: showAllYears ? undefined : Number(filterYear),
     month: filterMonth ? Number(filterMonth) : undefined,
     noticeType: filterNoticeType || undefined,
     page,
@@ -170,7 +189,12 @@ export function ListsPage() {
   }, []);
 
   const hasFilters = Boolean(
-    search || filterYear || filterMonth || filterNoticeType || clientIdFilter,
+    search ||
+      filterMonth ||
+      filterNoticeType ||
+      clientIdFilter ||
+      showAllYears ||
+      (!showAllYears && yearParam !== null && yearParam !== String(currentYear())),
   );
 
   function setClientFilter(clientId: string | undefined) {
@@ -196,8 +220,27 @@ export function ListsPage() {
     setSearch('');
     const next = new URLSearchParams();
     if (clientIdFilter) next.set('clientId', clientIdFilter);
+    next.set('year', String(currentYear()));
     setSearchParams(next, { replace: true });
     setPage(1);
+  }
+
+  function resolveClientSlug(clientId: string): string | undefined {
+    return (
+      activeClients.find((c) => c._id === clientId)?.slug ??
+      clientsData?.data.find((c) => c._id === clientId)?.slug
+    );
+  }
+
+  function buildNameFromValues(values: FormValues, clientId: string): string | null {
+    const clientSlug = resolveClientSlug(clientId);
+    if (!clientSlug) return null;
+    return buildListName({
+      clientSlug,
+      noticeType: values.noticeType,
+      noticeDate: values.noticeDate,
+      noticeName: values.noticeName,
+    });
   }
 
   const [createList, { isLoading: creating }] = useCreateListMutation();
@@ -229,24 +272,48 @@ export function ListsPage() {
   const watchedNoticeDate = watch('noticeDate');
 
   const generatedSlugPreview = useMemo(() => {
-    if (editing) return null;
-    const client = activeClients.find((c) => c._id === watchedClientId);
-    if (!client || !watchedNoticeType || !watchedNoticeName || !watchedNoticeDate) {
+    const clientId = editing?.clientId ?? watchedClientId;
+    const clientSlug = clientId ? resolveClientSlug(clientId) : undefined;
+    if (!clientSlug || !watchedNoticeType || !watchedNoticeName || !watchedNoticeDate) {
       return null;
     }
     return buildListSlug({
-      clientSlug: client.slug,
+      clientSlug,
       noticeType: watchedNoticeType,
       noticeDate: watchedNoticeDate,
       noticeName: watchedNoticeName,
     });
   }, [
-    editing,
+    editing?.clientId,
     activeClients,
+    clientsData?.data,
     watchedClientId,
     watchedNoticeType,
     watchedNoticeName,
     watchedNoticeDate,
+  ]);
+
+  useEffect(() => {
+    if (!dialogOpen || editing) return;
+
+    if (!isAdmin && authUser?.clientId) {
+      setValue('clientId', authUser.clientId);
+      return;
+    }
+
+    const preferred = clientIdFilter ?? activeClients[0]?._id;
+    if (preferred && !watchedClientId) {
+      setValue('clientId', preferred);
+    }
+  }, [
+    dialogOpen,
+    editing,
+    isAdmin,
+    authUser?.clientId,
+    clientIdFilter,
+    activeClients,
+    watchedClientId,
+    setValue,
   ]);
 
   function openCreate() {
@@ -281,9 +348,15 @@ export function ListsPage() {
     setSubmitError('');
     try {
       if (editing) {
+        const newName = buildNameFromValues(values, editing.clientId);
+        if (!newName) {
+          setSubmitError('Could not resolve client for this list.');
+          return;
+        }
         await updateList({
           listId: editing._id,
           body: {
+            name: newName,
             noticeType: values.noticeType,
             noticeName: values.noticeName,
             noticeDate: values.noticeDate,
@@ -293,7 +366,8 @@ export function ListsPage() {
         }).unwrap();
         toast.success('List updated');
       } else {
-        const client = activeClients.find((c) => c._id === values.clientId);
+        const clientId = isAdmin ? values.clientId : (authUser?.clientId ?? '');
+        const client = activeClients.find((c) => c._id === clientId);
         if (!client) {
           setSubmitError('Selected client is inactive or not found.');
           return;
@@ -305,7 +379,12 @@ export function ListsPage() {
           noticeName: values.noticeName,
         };
         await createList({
-          ...values,
+          clientId,
+          noticeType: values.noticeType,
+          noticeName: values.noticeName,
+          noticeDate: values.noticeDate,
+          dispatchDate: values.dispatchDate,
+          description: values.description,
           name: buildListName(naming),
           slug: buildListSlug(naming),
         }).unwrap();
@@ -483,29 +562,34 @@ export function ListsPage() {
         </div>
 
         <Select
-          value={filterYear || ALL_YEARS}
+          value={showAllYears ? ALL_YEARS : filterYear}
           onValueChange={(v) =>
-            patchFilters({ year: v === ALL_YEARS ? null : v })
+            patchFilters({ year: v === ALL_YEARS ? 'all' : v })
           }
         >
           <SelectTrigger className="w-[110px]">
             <SelectValue placeholder="Year" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL_YEARS}>All years</SelectItem>
             {yearOptions.map((y) => (
               <SelectItem key={y} value={String(y)}>
                 {y}
               </SelectItem>
             ))}
+            <SelectItem value={ALL_YEARS}>All years</SelectItem>
           </SelectContent>
         </Select>
 
         <Select
           value={filterMonth || ALL_MONTHS}
-          onValueChange={(v) =>
-            patchFilters({ month: v === ALL_MONTHS ? null : v })
-          }
+          onValueChange={(v) => {
+            const month = v === ALL_MONTHS ? null : v;
+            const updates: Record<string, string | null> = { month };
+            if (month && (showAllYears || !searchParams.has('year'))) {
+              updates.year = String(currentYear());
+            }
+            patchFilters(updates);
+          }}
         >
           <SelectTrigger className="w-[130px]">
             <SelectValue placeholder="Month" />
@@ -531,7 +615,7 @@ export function ListsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL_TYPES}>All types</SelectItem>
-            {['DEMAND', 'LEGAL', 'REMINDER', 'CUSTOM'].map((t) => (
+            {noticeTypeOptions.map((t) => (
               <SelectItem key={t} value={t}>
                 {t}
               </SelectItem>
@@ -736,19 +820,28 @@ export function ListsPage() {
             <DialogTitle>{editing ? 'Edit List' : 'New List'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {!editing && (
+            {!editing && isAdmin && (
               <div className="space-y-1.5">
                 <Label>
                   Client <span className="text-destructive">*</span>
                 </Label>
                 <Select
-                  value={watchedClientId}
+                  value={
+                    activeClients.some((c) => c._id === watchedClientId)
+                      ? watchedClientId
+                      : undefined
+                  }
                   onValueChange={(v) => setValue('clientId', v)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select client" />
                   </SelectTrigger>
                   <SelectContent>
+                    {activeClients.length === 0 && (
+                      <SelectItem value="__none__" disabled>
+                        No active clients
+                      </SelectItem>
+                    )}
                     {activeClients.map((c) => (
                       <SelectItem key={c._id} value={c._id}>
                         {c.name}
@@ -764,16 +857,19 @@ export function ListsPage() {
               </div>
             )}
 
-            {editing && (
-              <div className="space-y-1.5">
-                <Label>List name</Label>
-                <Input value={editing.name} disabled className="font-mono text-xs" />
+            {!editing && !isAdmin && authUser?.clientId && (
+              <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+                <span className="text-muted-foreground">Client: </span>
+                <span className="font-medium">
+                  {customerClient?.name ?? 'Your organization'}
+                </span>
               </div>
             )}
 
             <NoticeTypeCombobox
               value={watchedNoticeType ?? ''}
               onChange={(v) => setValue('noticeType', v, { shouldValidate: true })}
+              knownTypes={noticeTypesData}
               error={errors.noticeType?.message}
             />
 
@@ -795,14 +891,19 @@ export function ListsPage() {
               )}
             </div>
 
-            {!editing && generatedSlugPreview && (
+            {generatedSlugPreview && (
               <div className="rounded-md border border-border bg-muted/30 px-3 py-2">
                 <p className="text-xs font-medium text-muted-foreground">
-                  Generated list name
+                  {editing ? 'Updated list name' : 'Generated list name'}
                 </p>
                 <p className="mt-1 font-mono text-xs break-all">
                   {generatedSlugPreview}
                 </p>
+                {editing && editing.name !== generatedSlugPreview && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Current: {editing.name}
+                  </p>
+                )}
                 <p className="mt-1 text-xs text-muted-foreground">
                   Format: client-noticetype-year-month-date-noticename
                 </p>
