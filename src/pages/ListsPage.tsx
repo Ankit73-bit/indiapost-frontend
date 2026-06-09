@@ -10,6 +10,7 @@ import {
   Loader2,
   Trash2,
   XCircle,
+  FileText,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -521,6 +522,20 @@ export function ListsPage() {
                       ) : (
                         <Download className="h-3.5 w-3.5" />
                       )}
+                    </Button>
+                    {/* Tracking PDFs */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      title="Tracking PDFs"
+                      onClick={() =>
+                        navigate(
+                          `/articles?clientId=${list.clientId}&listId=${list._id}&pdfs=1`,
+                        )
+                      }
+                    >
+                      <FileText className="h-3.5 w-3.5" />
                     </Button>
                     {/* Edit */}
                     <Button

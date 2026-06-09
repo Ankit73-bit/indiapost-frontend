@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -14,6 +14,9 @@ import {
   Mail,
   MapPin,
   Truck,
+  FileText,
+  Eye,
+  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,8 +58,11 @@ import { useGetListQuery, useListListsQuery } from '@/store/api/listsApi';
 import { useListClientsQuery } from '@/store/api/clientsApi';
 import { useAppSelector } from '@/store';
 import { ALL_STATUSES } from '@/types';
-import { formatDate, formatDateTime, formatRelative, STATUS_CONFIG } from '@/lib/helpers';
+import { formatDate, formatDateTime, formatRelative, STATUS_CONFIG, getApiErrorMessage } from '@/lib/helpers';
+import { downloadPdfFile, viewPdfInNewTab } from '@/lib/pdfFiles';
+import { toast } from '@/lib/toast';
 import type { Article, NormalizedStatus } from '@/types';
+import { ListPdfsDialog } from '@/components/lists/ListPdfsDialog';
 
 // ─── Article detail sheet ─────────────────────────────────────────────────────
 
@@ -136,6 +142,43 @@ function ArticleSheet({
     clientId: article.clientId,
   });
 
+  const { data: list } = useGetListQuery(article.listId);
+  const hasPdf = list?.generatedPdfs?.some(
+    (p) =>
+      p.articleNumber.toUpperCase() === article.articleNumber.toUpperCase(),
+  );
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  async function handleViewPdf() {
+    setPdfBusy(true);
+    try {
+      await viewPdfInNewTab(
+        article.listId,
+        article.articleNumber,
+        article.clientId,
+      );
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to open PDF'));
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
+  async function handleDownloadPdf() {
+    setPdfBusy(true);
+    try {
+      await downloadPdfFile(
+        article.listId,
+        article.articleNumber,
+        article.clientId,
+      );
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, 'Failed to download PDF'));
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
   const { recipient, bookingDetails } = article;
   const attributeEntries = Object.entries(article.attributes ?? {});
   const hasAddress = Boolean(
@@ -197,6 +240,44 @@ function ArticleSheet({
               <p className="mt-2 text-xs text-muted-foreground">
                 Trigger Sync on the list to retry automatically.
               </p>
+            </div>
+          )}
+
+          {hasPdf && (
+            <div className="rounded-lg border border-border bg-muted/20 px-3 py-3">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <FileText className="h-3.5 w-3.5" />
+                Tracking PDF
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                India Post status report is available for this article.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5"
+                  disabled={pdfBusy}
+                  onClick={() => void handleViewPdf()}
+                >
+                  {pdfBusy ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Eye className="h-3.5 w-3.5" />
+                  )}
+                  View PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5"
+                  disabled={pdfBusy}
+                  onClick={() => void handleDownloadPdf()}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Download
+                </Button>
+              </div>
             </div>
           )}
 
@@ -564,14 +645,23 @@ function ListContextBar({
   listId,
   isAdmin,
   totalArticles,
+  onOpenPdfs,
 }: {
   clientId: string;
   listId: string;
   isAdmin: boolean;
   totalArticles?: number;
+  onOpenPdfs: () => void;
 }) {
   const navigate = useNavigate();
-  const { data: list } = useGetListQuery(listId);
+  const [pollList, setPollList] = useState(false);
+  const { data: list } = useGetListQuery(listId, {
+    pollingInterval: pollList ? 3000 : 0,
+  });
+
+  useEffect(() => {
+    setPollList(Boolean(list?.pdfProgress));
+  }, [list?.pdfProgress]);
   const { data: listsData } = useListListsQuery({ clientId, limit: 100 });
   const { data: clientsData } = useListClientsQuery(
     { limit: 100 },
@@ -632,6 +722,24 @@ function ListContextBar({
           </SelectContent>
         </Select>
       )}
+
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-8 gap-1.5 shrink-0"
+        onClick={onOpenPdfs}
+      >
+        <FileText className="h-3.5 w-3.5" />
+        PDFs
+        {(list?.generatedPdfs?.length ?? 0) > 0 && (
+          <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary tabular-nums">
+            {list!.generatedPdfs!.length}
+          </span>
+        )}
+        {list?.pdfProgress && (
+          <Loader2 className="h-3 w-3 animate-spin text-violet-600" />
+        )}
+      </Button>
     </div>
   );
 }
@@ -668,11 +776,16 @@ function ArticlesListView({
   >();
   const [syncFailedOnly, setSyncFailedOnly] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [pdfsOpen, setPdfsOpen] = useState(
+    () => new URLSearchParams(window.location.search).get('pdfs') === '1',
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
     return () => clearTimeout(timer);
   }, [searchInput]);
+
+  const { data: listMeta } = useGetListQuery(listId);
 
   const { data, isLoading, isError, isFetching, refetch } =
     useListArticlesQuery(
@@ -711,6 +824,14 @@ function ArticlesListView({
     Boolean(hasCustomerId),
   );
 
+  const pdfArticleNumbers = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of listMeta?.generatedPdfs ?? []) {
+      set.add(p.articleNumber.toUpperCase());
+    }
+    return set;
+  }, [listMeta?.generatedPdfs]);
+
   return (
     <>
       <ListContextBar
@@ -718,6 +839,17 @@ function ArticlesListView({
         listId={listId}
         isAdmin={isAdmin}
         totalArticles={data?.meta?.total}
+        onOpenPdfs={() => setPdfsOpen(true)}
+      />
+
+      <ListPdfsDialog
+        open={pdfsOpen}
+        onClose={() => setPdfsOpen(false)}
+        listId={listId}
+        clientId={clientId}
+        listName={listMeta?.name ?? 'List'}
+        listSlug={listMeta?.slug ?? 'list'}
+        isAdmin={isAdmin}
       />
 
       {/* Filters */}
@@ -890,7 +1022,17 @@ function ArticlesListView({
                   onClick={() => setSelectedArticle(article)}
                 >
                   <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">
-                    {article.articleNumber}
+                    <span className="inline-flex items-center gap-1.5">
+                      {article.articleNumber}
+                      {pdfArticleNumbers.has(
+                        article.articleNumber.toUpperCase(),
+                      ) && (
+                        <FileText
+                          className="h-3 w-3 shrink-0 text-primary"
+                          aria-label="PDF available"
+                        />
+                      )}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-medium leading-tight">

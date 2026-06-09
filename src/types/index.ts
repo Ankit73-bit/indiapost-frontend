@@ -171,6 +171,40 @@ export interface SyncProgress {
   startedAt: string;
 }
 
+export interface GeneratedPdf {
+  articleNumber: string;
+  s3Key: string;
+  sizeBytes: number;
+  generatedAt: string;
+  isTerminal: boolean;
+}
+
+export interface PdfGenerationProgress {
+  jobId: string;
+  totalArticles: number;
+  processedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  startedAt: string;
+  updatedAt?: string;
+}
+
+export interface PdfGenerationResult {
+  generated: number;
+  skipped: number;
+  failed: number;
+  completedAt: string;
+}
+
+export interface ListPdfsSummary {
+  totalArticles: number;
+  pdfCount: number;
+  generatedPdfs: GeneratedPdf[];
+  pdfProgress?: PdfGenerationProgress;
+  lastPdfGenerationResult?: PdfGenerationResult;
+  pdfError?: string;
+}
+
 export type ListStats = Partial<Record<NormalizedStatus, number>>;
 
 export interface UploadedFile {
@@ -206,6 +240,10 @@ export interface List {
   importProgress?: ImportProgress;
   importError?: string;
   syncProgress?: SyncProgress;
+  pdfProgress?: PdfGenerationProgress;
+  lastPdfGenerationResult?: PdfGenerationResult;
+  generatedPdfs?: GeneratedPdf[];
+  pdfError?: string;
   createdBy?: string;
   createdAt: string;
   updatedAt: string;

@@ -6,6 +6,7 @@ import type {
   UpdateListBody,
   ListListsQuery,
   PaginationMeta,
+  ListPdfsSummary,
 } from '@/types';
 
 export const listsApi = baseApi.injectEndpoints({
@@ -132,6 +133,33 @@ export const listsApi = baseApi.injectEndpoints({
         { type: 'List', id: 'LIST' },
       ],
     }),
+
+    generateListPdfs: build.mutation<
+      { jobId: string; message: string; totalArticles: number },
+      { listId: string; clientId: string }
+    >({
+      query: ({ listId, clientId }) => ({
+        url: `/api/v1/lists/${listId}/generate-pdfs`,
+        method: 'POST',
+        body: { clientId },
+      }),
+      transformResponse: (
+        res: ApiSuccess<{ jobId: string; message: string; totalArticles: number }>,
+      ) => res.data,
+      invalidatesTags: (_r, _e, { listId }) => [
+        { type: 'List', id: listId },
+        { type: 'ListPdfs', id: listId },
+      ],
+    }),
+
+    listListPdfs: build.query<ListPdfsSummary, { listId: string; clientId: string }>({
+      query: ({ listId, clientId }) => ({
+        url: `/api/v1/lists/${listId}/pdfs`,
+        params: { clientId },
+      }),
+      transformResponse: (res: ApiSuccess<ListPdfsSummary>) => res.data,
+      providesTags: (_r, _e, { listId }) => [{ type: 'ListPdfs', id: listId }],
+    }),
   }),
 });
 
@@ -146,4 +174,6 @@ export const {
   useUploadListFileMutation,
   useCancelImportMutation,
   useCancelSyncMutation,
+  useGenerateListPdfsMutation,
+  useListListPdfsQuery,
 } = listsApi;
