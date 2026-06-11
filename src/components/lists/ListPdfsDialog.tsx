@@ -6,6 +6,7 @@ import {
   Loader2,
   RefreshCw,
   Search,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,11 +22,7 @@ import { Pagination } from '@/components/shared/Pagination';
 import { toast } from '@/lib/toast';
 import { formatBytes, formatDateTime, getApiErrorMessage } from '@/lib/helpers';
 import { downloadPdfFile, viewPdfInNewTab } from '@/lib/pdfFiles';
-import {
-  PdfZipDownloadCancelledError,
-  runPdfZipDownload,
-  type PdfZipJobStatus,
-} from '@/lib/pdfZipDownload';
+import { useZipDownload } from '@/components/lists/ZipDownloadProvider';
 import { ZipDownloadProgress } from '@/components/lists/ZipDownloadProgress';
 import {
   useGenerateListPdfsMutation,
@@ -69,24 +66,21 @@ function ListPdfsDialogBody({
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busyAction, setBusyAction] = useState<string | null>(null);
-  const [zipJob, setZipJob] = useState<PdfZipJobStatus | null>(null);
-  const [zipCancelling, setZipCancelling] = useState(false);
-  const [zipLabel, setZipLabel] = useState('Preparing ZIP…');
+
+  const { startZipDownload, cancelZipDownload, isListZipBusy, getListTask } =
+    useZipDownload();
+  const listZipTask = getListTask(listId);
+  const isZipBusy = isListZipBusy(listId);
 
   const querySearch = deferredSearch.trim() || undefined;
   const aliveRef = useRef(true);
-  const zipCancelledRef = useRef(false);
 
   useEffect(() => {
     aliveRef.current = true;
-    zipCancelledRef.current = false;
     return () => {
       aliveRef.current = false;
-      zipCancelledRef.current = true;
     };
   }, []);
-
-  const isZipBusy = zipJob?.status === 'building' || zipCancelling;
 
   const { data, isLoading, isFetching, refetch } = useListListPdfsQuery({
     listId,
@@ -127,6 +121,10 @@ function ListPdfsDialogBody({
       else next.add(articleNumber);
       return next;
     });
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
   }
 
   async function watchPdfProgress() {
@@ -171,72 +169,40 @@ function ListPdfsDialogBody({
     }
   }
 
-  function handleCancelZipDownload() {
-    zipCancelledRef.current = true;
-    setZipCancelling(true);
-  }
-
-  async function runZipDownload(
-    articleNumbers: string[] | undefined,
-    label: string,
-  ) {
-    zipCancelledRef.current = false;
-    setZipCancelling(false);
-    setZipLabel(label);
-    setZipJob(null);
-
-    try {
-      const result = await runPdfZipDownload({
-        listId,
-        clientId,
-        articleNumbers,
-        onProgress: setZipJob,
-        isCancelled: () => zipCancelledRef.current || !aliveRef.current,
-      });
-      toast.success(
-        `Downloaded ${result.count.toLocaleString()} PDFs as ${result.fileName}`,
-      );
-    } catch (err) {
-      if (err instanceof PdfZipDownloadCancelledError) {
-        toast.info('ZIP download cancelled');
-      } else {
-        toast.error(getApiErrorMessage(err, 'Failed to download PDFs'));
-      }
-    } finally {
-      setZipJob(null);
-      setZipCancelling(false);
-      zipCancelledRef.current = false;
-    }
-  }
-
-  async function handleDownloadSelected() {
+  function handleDownloadSelected() {
     const numbers = [...selected];
     if (numbers.length === 0) return;
 
     if (numbers.length === 1) {
-      setBusyAction(`dl-${numbers[0]}`);
-      try {
-        await downloadPdfFile(listId, numbers[0]!, clientId);
-      } catch (err) {
-        toast.error(getApiErrorMessage(err, 'Failed to download PDF'));
-      } finally {
-        setBusyAction(null);
-      }
+      const articleNumber = numbers[0]!;
+      setBusyAction(`dl-${articleNumber}`);
+      void downloadPdfFile(listId, articleNumber, clientId)
+        .then(() => clearSelection())
+        .catch((err) =>
+          toast.error(getApiErrorMessage(err, 'Failed to download PDF')),
+        )
+        .finally(() => setBusyAction(null));
       return;
     }
 
-    await runZipDownload(
-      numbers,
-      `Downloading ${numbers.length.toLocaleString()} selected PDFs…`,
-    );
+    startZipDownload({
+      listId,
+      clientId,
+      listName,
+      articleNumbers: numbers,
+      label: `Downloading ${numbers.length.toLocaleString()} selected PDFs…`,
+      onComplete: clearSelection,
+    });
   }
 
-  async function handleDownloadAll() {
+  function handleDownloadAll() {
     const total = summary?.pdfCount ?? 0;
-    await runZipDownload(
-      undefined,
-      `Downloading all ${total.toLocaleString()} PDFs…`,
-    );
+    startZipDownload({
+      listId,
+      clientId,
+      listName,
+      label: `Downloading all ${total.toLocaleString()} PDFs…`,
+    });
   }
 
   const progress = summary?.pdfProgress;
@@ -305,13 +271,19 @@ function ListPdfsDialogBody({
             </div>
           )}
 
-          {zipJob && (
+          {listZipTask?.job && (
             <ZipDownloadProgress
-              job={zipJob}
-              label={zipLabel}
-              cancelling={zipCancelling}
-              onCancel={handleCancelZipDownload}
+              job={listZipTask.job}
+              label={listZipTask.label}
+              cancelling={listZipTask.cancelling}
+              onCancel={() => cancelZipDownload(listZipTask.id)}
             />
+          )}
+          {listZipTask && !listZipTask.job && (
+            <p className="text-xs text-muted-foreground">
+              ZIP download started — you can close this dialog and track progress
+              in the banner at the top of the page.
+            </p>
           )}
 
           {progress && (
@@ -355,9 +327,9 @@ function ListPdfsDialogBody({
               variant="outline"
               size="sm"
               disabled={(summary?.pdfCount ?? 0) === 0 || isZipBusy}
-              onClick={() => void handleDownloadAll()}
+              onClick={handleDownloadAll}
             >
-              {isZipBusy && zipLabel.startsWith('Downloading all') ? (
+              {isZipBusy ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Download className="mr-1.5 h-3.5 w-3.5" />
@@ -368,15 +340,26 @@ function ListPdfsDialogBody({
               variant="outline"
               size="sm"
               disabled={selected.size === 0 || isZipBusy}
-              onClick={() => void handleDownloadSelected()}
+              onClick={handleDownloadSelected}
             >
-              {isZipBusy && zipLabel.startsWith('Downloading') && !zipLabel.startsWith('Downloading all') ? (
+              {isZipBusy ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Download className="mr-1.5 h-3.5 w-3.5" />
               )}
               Download selected ({selected.size})
             </Button>
+            {selected.size > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={isZipBusy}
+                onClick={clearSelection}
+              >
+                <X className="mr-1.5 h-3.5 w-3.5" />
+                Clear selection
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

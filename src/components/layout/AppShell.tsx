@@ -1,6 +1,8 @@
 import { Outlet, Navigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { OperationsBanner } from '@/components/shared/OperationsBanner';
+import { ZipDownloadBanner } from '@/components/shared/ZipDownloadBanner';
+import { ZipDownloadProvider } from '@/components/lists/ZipDownloadProvider';
 import { useAppSelector } from '@/store';
 
 export function AppShell() {
@@ -9,14 +11,17 @@ export function AppShell() {
   if (!token) return <Navigate to="/login" replace />;
 
   return (
+    <ZipDownloadProvider>
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
         <OperationsBanner />
+        <ZipDownloadBanner />
         <div className="mx-auto max-w-7xl px-6 py-6">
           <Outlet />
         </div>
       </main>
     </div>
+    </ZipDownloadProvider>
   );
 }
