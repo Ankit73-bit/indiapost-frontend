@@ -11,11 +11,12 @@ export type PdfZipJobStatus = {
   processed: number;
   total: number;
   percent: number;
-  phase: 'adding' | 'compressing';
+  phase: 'adding' | 'compressing' | 'uploading';
   startedAt: string;
   finishedAt?: string;
   error?: string;
   fileName?: string;
+  downloadUrl?: string;
   etaSeconds: number | null;
 };
 
@@ -41,12 +42,14 @@ export function formatZipEta(seconds: number | null | undefined): string {
 }
 
 function zipPhaseLabel(phase: PdfZipJobStatus['phase']): string {
-  return phase === 'compressing' ? 'Compressing archive…' : 'Adding PDFs to archive…';
+  if (phase === 'uploading') return 'Uploading archive…';
+  if (phase === 'compressing') return 'Compressing archive…';
+  return 'Adding PDFs to archive…';
 }
 
 export function zipJobStatusLabel(job: PdfZipJobStatus): string {
-  if (job.phase === 'compressing') {
-    return `Compressing archive… ${job.percent}%`;
+  if (job.phase === 'compressing' || job.phase === 'uploading') {
+    return `${zipPhaseLabel(job.phase)} ${job.percent}%`;
   }
   return `${zipPhaseLabel(job.phase)} ${job.processed.toLocaleString()} / ${job.total.toLocaleString()} (${job.percent}%)`;
 }
@@ -123,6 +126,14 @@ export async function cancelPdfZipJob(
   }
 }
 
+function triggerBrowserDownload(url: string, fileName: string): void {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.rel = 'noopener noreferrer';
+  a.click();
+}
+
 async function downloadPdfZipJobFile(
   listId: string,
   clientId: string,
@@ -140,11 +151,9 @@ async function downloadPdfZipJobFile(
   }
 
   const blob = await res.blob();
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = fileName;
-  a.click();
-  URL.revokeObjectURL(a.href);
+  const objectUrl = URL.createObjectURL(blob);
+  triggerBrowserDownload(objectUrl, fileName);
+  URL.revokeObjectURL(objectUrl);
 }
 
 export class PdfZipDownloadCancelledError extends Error {
@@ -195,12 +204,16 @@ export async function runPdfZipDownload(options: {
     throw new Error('ZIP download did not complete');
   }
 
-  await downloadPdfZipJobFile(
-    options.listId,
-    options.clientId,
-    current.jobId,
-    current.fileName,
-  );
+  if (current.downloadUrl) {
+    triggerBrowserDownload(current.downloadUrl, current.fileName);
+  } else {
+    await downloadPdfZipJobFile(
+      options.listId,
+      options.clientId,
+      current.jobId,
+      current.fileName,
+    );
+  }
 
   return { count: current.total, fileName: current.fileName };
 }
