@@ -51,7 +51,6 @@ export function ClientsPage() {
   const [submitError, setSubmitError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Client | null>(null);
   const [deleteError, setDeleteError] = useState('');
-
   const { data, isLoading } = useListClientsQuery({ page, limit: 20 });
   const [createClient, { isLoading: creating }] = useCreateClientMutation();
   const [updateClient, { isLoading: updating }] = useUpdateClientMutation();
@@ -64,13 +63,10 @@ export function ClientsPage() {
     handleSubmit,
     setValue,
     reset,
-    watch,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
   });
-
-  const nameValue = watch('name');
 
   function openCreate() {
     setEditing(null);
@@ -96,6 +92,7 @@ export function ClientsPage() {
     try {
       await deleteClient(deleteTarget._id).unwrap();
       setDeleteTarget(null);
+      toast.success('Client deleted permanently');
     } catch (err) {
       setDeleteError(getApiErrorMessage(err, 'Failed to delete client.'));
     }
@@ -217,22 +214,36 @@ export function ClientsPage() {
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     {client.isActive ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 text-muted-foreground"
-                        title="Deactivate client"
-                        onClick={async () => {
-                          try {
-                            await deactivateClient(client._id).unwrap();
-                            toast.success('Client deactivated');
-                          } catch (err) {
-                            toast.apiError(err, 'Failed to deactivate client');
-                          }
-                        }}
-                      >
-                        <PowerOff className="h-3.5 w-3.5" />
-                      </Button>
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-muted-foreground"
+                          title="Deactivate client"
+                          onClick={async () => {
+                            try {
+                              await deactivateClient(client._id).unwrap();
+                              toast.success('Client deactivated');
+                            } catch (err) {
+                              toast.apiError(err, 'Failed to deactivate client');
+                            }
+                          }}
+                        >
+                          <PowerOff className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          title="Delete client permanently"
+                          onClick={() => {
+                            setDeleteError('');
+                            setDeleteTarget(client);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
                     ) : (
                       <Button
                         variant="ghost"
@@ -251,18 +262,6 @@ export function ClientsPage() {
                         <Power className="h-3.5 w-3.5" />
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                      title="Delete client permanently"
-                      onClick={() => {
-                        setDeleteError('');
-                        setDeleteTarget(client);
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
                   </div>
                 </td>
               </tr>

@@ -420,10 +420,15 @@ export interface FailedArticle {
   createdAt: string;
 }
 
+export type SyncJobType = 'MANUAL' | 'SCHEDULED' | 'RETRY' | 'PARTIAL';
+
 export interface ListSyncJobsQuery {
   clientId?: string;
   listId?: string;
   status?: SyncJobStatus;
+  type?: SyncJobType;
+  fromDate?: string;
+  toDate?: string;
   listOnly?: boolean;
   page?: number;
   limit?: number;

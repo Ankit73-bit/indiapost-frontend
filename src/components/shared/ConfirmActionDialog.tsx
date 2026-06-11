@@ -16,6 +16,7 @@ interface ConfirmActionDialogProps {
   description: string;
   entityName: string;
   confirmLabel?: string;
+  destructive?: boolean;
   isLoading?: boolean;
   error?: string;
 }
@@ -28,6 +29,7 @@ export function ConfirmActionDialog({
   description,
   entityName,
   confirmLabel = 'Confirm',
+  destructive = false,
   isLoading = false,
   error,
 }: ConfirmActionDialogProps) {
@@ -43,7 +45,7 @@ export function ConfirmActionDialog({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">{description}</p>
-        <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm font-medium">
+        <p className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm font-medium break-all">
           {entityName}
         </p>
         {error && (
@@ -60,7 +62,12 @@ export function ConfirmActionDialog({
           >
             Cancel
           </Button>
-          <Button type="button" onClick={onConfirm} disabled={isLoading}>
+          <Button
+            type="button"
+            variant={destructive ? 'destructive' : 'default'}
+            onClick={onConfirm}
+            disabled={isLoading}
+          >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {confirmLabel}
           </Button>

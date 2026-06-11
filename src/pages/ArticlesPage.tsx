@@ -21,13 +21,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -54,7 +47,8 @@ import {
   useListArticlesQuery,
   useGetArticleEventsQuery,
 } from '@/store/api/articlesApi';
-import { useGetListQuery, useListListsQuery } from '@/store/api/listsApi';
+import { listsApi, useGetListQuery, useListListsQuery } from '@/store/api/listsApi';
+import { SearchableListSelect } from '@/components/shared/SearchableListSelect';
 import { useListClientsQuery } from '@/store/api/clientsApi';
 import { useAppSelector } from '@/store';
 import { ALL_STATUSES } from '@/types';
@@ -657,15 +651,14 @@ function ListContextBar({
   onOpenPdfs: () => void;
 }) {
   const navigate = useNavigate();
-  const [pollList, setPollList] = useState(false);
+  const cachedList = useAppSelector(
+    (state) => listsApi.endpoints.getList.select(listId)(state).data,
+  );
+  const shouldPollList =
+    cachedList?.status === 'IMPORTING' || Boolean(cachedList?.pdfProgress);
   const { data: list } = useGetListQuery(listId, {
-    pollingInterval: pollList ? 3000 : 0,
+    pollingInterval: shouldPollList ? 3000 : 0,
   });
-
-  useEffect(() => {
-    setPollList(Boolean(list?.pdfProgress));
-  }, [list?.pdfProgress]);
-  const { data: listsData } = useListListsQuery({ clientId, limit: 100 });
   const { data: clientsData } = useListClientsQuery(
     { limit: 100 },
     { skip: !isAdmin },
@@ -706,25 +699,15 @@ function ListContextBar({
         </p>
       </div>
 
-      {(listsData?.data.length ?? 0) > 1 && (
-        <Select
-          value={listId}
-          onValueChange={(id) =>
-            navigate(`/articles?clientId=${clientId}&listId=${id}`)
-          }
-        >
-          <SelectTrigger className="h-8 w-[180px] text-xs">
-            <SelectValue placeholder="Switch list" />
-          </SelectTrigger>
-          <SelectContent>
-            {listsData?.data.map((l) => (
-              <SelectItem key={l._id} value={l._id}>
-                {l.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
+      <SearchableListSelect
+        clientId={clientId}
+        value={listId}
+        onChange={(id) =>
+          navigate(`/articles?clientId=${clientId}&listId=${id}`)
+        }
+        placeholder="Switch list"
+        className="w-[220px]"
+      />
 
       <Button
         variant="outline"
@@ -789,14 +772,12 @@ function ArticlesListView({
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const [pollListImport, setPollListImport] = useState(false);
+  const cachedListMeta = useAppSelector(
+    (state) => listsApi.endpoints.getList.select(listId)(state).data,
+  );
   const { data: listMeta } = useGetListQuery(listId, {
-    pollingInterval: pollListImport ? 3000 : 0,
+    pollingInterval: cachedListMeta?.status === 'IMPORTING' ? 3000 : 0,
   });
-
-  useEffect(() => {
-    setPollListImport(listMeta?.status === 'IMPORTING');
-  }, [listMeta?.status]);
 
   const { data, isLoading, isError, isFetching, refetch } =
     useListArticlesQuery(

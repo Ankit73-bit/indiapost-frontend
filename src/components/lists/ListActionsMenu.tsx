@@ -57,13 +57,9 @@ export function ListActionsMenu({
   onCancelImport,
   onCancelSync,
 }: ListActionsMenuProps) {
-  const isBusy =
-    list.status === 'IMPORTING' || list.status === 'SYNCING';
+  const isBusy = list.status === 'IMPORTING' || list.status === 'SYNCING';
   const canSync =
-    isAdmin &&
-    !isBusy &&
-    list.status !== 'ARCHIVED' &&
-    list.totalArticles > 0;
+    isAdmin && !isBusy && list.status !== 'ARCHIVED' && list.totalArticles > 0;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

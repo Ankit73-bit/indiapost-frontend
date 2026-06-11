@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { RefreshCw, RotateCcw, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -18,13 +19,15 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { SearchableListSelect } from '@/components/shared/SearchableListSelect';
 import { SyncJobStatusBadge } from '@/components/shared/StatusBadge';
 import { Pagination } from '@/components/shared/Pagination';
 import { useListClientsQuery } from '@/store/api/clientsApi';
-import { useListListsQuery, listsApi } from '@/store/api/listsApi';
-import { useAppDispatch } from '@/store';
+import { listsApi } from '@/store/api/listsApi';
+import { useAppDispatch, useAppSelector } from '@/store';
 import { ClientFilterSelect } from '@/components/shared/ClientFilterSelect';
 import {
+  syncApi,
   useTriggerSyncMutation,
   useListSyncJobsQuery,
   useListFailedArticlesQuery,
@@ -32,11 +35,14 @@ import {
 } from '@/store/api/syncApi';
 import { formatRelative, getApiErrorMessage } from '@/lib/helpers';
 import { toast } from '@/lib/toast';
-import type { SyncJob, SyncJobStatus } from '@/types';
+import type { SyncJob, SyncJobStatus, SyncJobType } from '@/types';
 
 const ALL_LISTS = '__all__';
 const ALL_LISTS_FILTER = '__all_lists__';
 const ALL_STATUS = '__all_status__';
+const ALL_JOB_TYPES = '__all_job_types__';
+
+const JOB_TYPES: SyncJobType[] = ['MANUAL', 'SCHEDULED', 'RETRY', 'PARTIAL'];
 
 const JOB_STATUSES: SyncJobStatus[] = [
   'QUEUED',
@@ -70,16 +76,37 @@ export function SyncPage() {
   const filterClientId = searchParams.get('clientId') ?? '';
   const filterListId = searchParams.get('listId') ?? '';
   const filterStatus = searchParams.get('status') ?? '';
-  const activeTab =
-    searchParams.get('tab') === 'failed' ? 'failed' : 'jobs';
+  const filterJobType = searchParams.get('type') ?? '';
+  const filterFromDate = searchParams.get('fromDate') ?? '';
+  const filterToDate = searchParams.get('toDate') ?? '';
+  const activeTab = searchParams.get('tab') === 'failed' ? 'failed' : 'jobs';
 
-  const [jobsPage, setJobsPage] = useState(1);
-  const [failedPage, setFailedPage] = useState(1);
+  const jobsFilterKey = [
+    filterClientId,
+    filterListId,
+    filterStatus,
+    filterJobType,
+    filterFromDate,
+    filterToDate,
+  ].join('|');
+  const failedFilterKey = [filterClientId, filterListId].join('|');
+
+  const [pageByKey, setPageByKey] = useState<Record<string, number>>({});
+  const jobsPage = pageByKey[`jobs|${jobsFilterKey}`] ?? 1;
+  const failedPage = pageByKey[`failed|${failedFilterKey}`] ?? 1;
+
+  const setJobsPage = (page: number) => {
+    setPageByKey((prev) => ({ ...prev, [`jobs|${jobsFilterKey}`]: page }));
+  };
+  const setFailedPage = (page: number) => {
+    setPageByKey((prev) => ({ ...prev, [`failed|${failedFilterKey}`]: page }));
+  };
+
   const [triggerDialogOpen, setTriggerDialogOpen] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState('');
   const [selectedListId, setSelectedListId] = useState(ALL_LISTS);
   const [triggerError, setTriggerError] = useState('');
-  const [pollJobs, setPollJobs] = useState(false);
+  const [syncPollForced, setSyncPollForced] = useState(false);
 
   function patchParams(updates: Record<string, string | null>) {
     const next = new URLSearchParams(searchParams);
@@ -90,28 +117,40 @@ export function SyncPage() {
     setSearchParams(next, { replace: true });
   }
 
-  useEffect(() => {
-    setJobsPage(1);
-    setFailedPage(1);
-  }, [filterClientId, filterListId, filterStatus]);
-
   const { data: clientsData } = useListClientsQuery({ limit: 100 });
-  const { data: listsData } = useListListsQuery({ limit: 100 });
-  const { data: filterListsData } = useListListsQuery(
-    { clientId: filterClientId || undefined, limit: 100 },
-    { skip: !filterClientId },
-  );
 
-  const { data: jobsData, isLoading: jobsLoading } = useListSyncJobsQuery(
-    {
+  const jobsQueryArgs = useMemo(
+    () => ({
       page: jobsPage,
       limit: 20,
-      listOnly: true,
+      listOnly: true as const,
       clientId: filterClientId || undefined,
       listId: filterListId || undefined,
       status: (filterStatus as SyncJobStatus) || undefined,
-    },
-    { pollingInterval: pollJobs ? 3000 : 0 },
+      type: (filterJobType as SyncJobType) || undefined,
+      fromDate: filterFromDate || undefined,
+      toDate: filterToDate || undefined,
+    }),
+    [
+      jobsPage,
+      filterClientId,
+      filterListId,
+      filterStatus,
+      filterJobType,
+      filterFromDate,
+      filterToDate,
+    ],
+  );
+
+  const cachedJobs = useAppSelector(
+    (state) => syncApi.endpoints.listSyncJobs.select(jobsQueryArgs)(state).data,
+  );
+  const activeJobs = cachedJobs?.data.filter((j) => isActiveJob(j)) ?? [];
+  const shouldPollJobs = syncPollForced || activeJobs.length > 0;
+
+  const { data: jobsData, isLoading: jobsLoading } = useListSyncJobsQuery(
+    jobsQueryArgs,
+    { pollingInterval: shouldPollJobs ? 3000 : 0 },
   );
 
   const { data: failedData, isLoading: failedLoading } =
@@ -122,27 +161,15 @@ export function SyncPage() {
         clientId: filterClientId || undefined,
         listId: filterListId || undefined,
       },
-      { pollingInterval: pollJobs ? 3000 : 0 },
+      { pollingInterval: shouldPollJobs ? 3000 : 0 },
     );
-
-  const { data: clientListsData } = useListListsQuery(
-    { clientId: selectedClientId || undefined, limit: 100 },
-    { skip: !selectedClientId },
-  );
-
-  const activeJobs = jobsData?.data.filter((j) => isActiveJob(j)) ?? [];
-
-  useEffect(() => {
-    setPollJobs(activeJobs.length > 0);
-  }, [activeJobs.length]);
 
   const listNameById = useMemo(() => {
     const map = new Map<string, string>();
-    for (const l of listsData?.data ?? []) map.set(l._id, l.name);
-    for (const l of filterListsData?.data ?? []) map.set(l._id, l.name);
-    for (const [id, name] of Object.entries(resolvedListNames)) map.set(id, name);
+    for (const [id, name] of Object.entries(resolvedListNames))
+      map.set(id, name);
     return map;
-  }, [listsData?.data, filterListsData?.data, resolvedListNames]);
+  }, [resolvedListNames]);
 
   useEffect(() => {
     if (!jobsData?.data.length) return;
@@ -165,16 +192,13 @@ export function SyncPage() {
   const [triggerSync, { isLoading: triggering }] = useTriggerSyncMutation();
   const [retryArticle] = useRetryFailedArticleMutation();
 
-  const syncableLists =
-    clientListsData?.data.filter(
-      (l) =>
-        l.status !== 'IMPORTING' &&
-        l.status !== 'SYNCING' &&
-        l.status !== 'ARCHIVED',
-    ) ?? [];
-
   const hasJobFilters = Boolean(
-    filterClientId || filterListId || filterStatus,
+    filterClientId ||
+    filterListId ||
+    filterStatus ||
+    filterJobType ||
+    filterFromDate ||
+    filterToDate,
   );
 
   function handleClientChange(clientId: string) {
@@ -200,7 +224,10 @@ export function SyncPage() {
           : { clientId: selectedClientId, listId: selectedListId };
       const result = await triggerSync(body).unwrap();
       toast.success(result.message);
-      if (result.syncJobId) setPollJobs(true);
+      if (result.syncJobId) {
+        setSyncPollForced(true);
+        window.setTimeout(() => setSyncPollForced(false), 12000);
+      }
       setTriggerDialogOpen(false);
       setSelectedClientId('');
       setSelectedListId(ALL_LISTS);
@@ -215,7 +242,8 @@ export function SyncPage() {
     try {
       await retryArticle(articleId).unwrap();
       toast.success('Retry enqueued');
-      setPollJobs(true);
+      setSyncPollForced(true);
+      window.setTimeout(() => setSyncPollForced(false), 12000);
     } catch (err) {
       toast.apiError(err, 'Failed to retry article');
     }
@@ -252,27 +280,21 @@ export function SyncPage() {
           }
         />
 
-        <Select
-          value={filterListId || ALL_LISTS_FILTER}
-          onValueChange={(v) =>
-            patchParams({ listId: v === ALL_LISTS_FILTER ? null : v })
-          }
-          disabled={!filterClientId}
-        >
-          <SelectTrigger className="w-[200px]">
-            <SelectValue
-              placeholder={filterClientId ? 'All lists' : 'Select client first'}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_LISTS_FILTER}>All lists</SelectItem>
-            {filterListsData?.data.map((l) => (
-              <SelectItem key={l._id} value={l._id}>
-                {l.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="w-[220px] min-w-0 max-w-full shrink">
+          <SearchableListSelect
+            clientId={filterClientId || undefined}
+            value={filterListId || ALL_LISTS_FILTER}
+            onChange={(v) =>
+              patchParams({ listId: v === ALL_LISTS_FILTER ? null : v })
+            }
+            disabled={!filterClientId}
+            showAllOption
+            allOptionValue={ALL_LISTS_FILTER}
+            allOptionLabel="All lists"
+            placeholder={filterClientId ? 'All lists' : 'Select client first'}
+            className="w-full"
+          />
+        </div>
 
         <Select
           value={filterStatus || ALL_STATUS}
@@ -280,7 +302,7 @@ export function SyncPage() {
             patchParams({ status: v === ALL_STATUS ? null : v })
           }
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -293,12 +315,54 @@ export function SyncPage() {
           </SelectContent>
         </Select>
 
+        <Select
+          value={filterJobType || ALL_JOB_TYPES}
+          onValueChange={(v) =>
+            patchParams({ type: v === ALL_JOB_TYPES ? null : v })
+          }
+        >
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="All types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_JOB_TYPES}>All types</SelectItem>
+            {JOB_TYPES.map((t) => (
+              <SelectItem key={t} value={t}>
+                {t}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Input
+          type="date"
+          className="h-9 w-[150px]"
+          value={filterFromDate}
+          onChange={(e) => patchParams({ fromDate: e.target.value || null })}
+          title="From date"
+        />
+
+        <Input
+          type="date"
+          className="h-9 w-[150px]"
+          value={filterToDate}
+          onChange={(e) => patchParams({ toDate: e.target.value || null })}
+          title="To date"
+        />
+
         {hasJobFilters && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() =>
-              patchParams({ clientId: null, listId: null, status: null })
+              patchParams({
+                clientId: null,
+                listId: null,
+                status: null,
+                type: null,
+                fromDate: null,
+                toDate: null,
+              })
             }
           >
             <X className="mr-1 h-3.5 w-3.5" /> Clear filters
@@ -317,7 +381,9 @@ export function SyncPage() {
 
       <Tabs
         value={activeTab}
-        onValueChange={(tab) => patchParams({ tab: tab === 'jobs' ? null : tab })}
+        onValueChange={(tab) =>
+          patchParams({ tab: tab === 'jobs' ? null : tab })
+        }
       >
         <TabsList className="mb-4">
           <TabsTrigger value="jobs">Sync Jobs</TabsTrigger>
@@ -382,18 +448,24 @@ export function SyncPage() {
                     key={job._id}
                     className="border-b border-border/50 last:border-0"
                   >
-                    <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
                       {job._id.slice(-8)}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground font-mono text-xs">
+                    <td className="px-4 py-3 text-muted-foreground text-xs">
                       {clientsData?.data.find((c) => c._id === job.clientId)
                         ?.name ?? job.clientId.slice(-6)}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
-                      {job.listId
-                        ? (listNameById.get(job.listId) ??
-                          job.listId.slice(-6))
-                        : '—'}
+                      {job.listId ? (
+                        <span
+                          className="block truncate text-xs"
+                          title={listNameById.get(job.listId) ?? job.listId}
+                        >
+                          {listNameById.get(job.listId) ?? job.listId.slice(-6)}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <SyncJobStatusBadge status={job.status} />
@@ -411,7 +483,7 @@ export function SyncPage() {
                               style={{ width: `${syncJobPercent(job)}%` }}
                             />
                           </div>
-                          <p className="text-xs text-muted-foreground font-mono">
+                          <p className="text-xs text-muted-foreground">
                             {job.processedCount.toLocaleString()} /{' '}
                             {job.totalArticles.toLocaleString()}
                           </p>
@@ -420,7 +492,7 @@ export function SyncPage() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-destructive">
+                    <td className="px-4 py-3 text-right text-destructive">
                       {job.failedCount > 0 ? job.failedCount : '—'}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">
@@ -430,7 +502,7 @@ export function SyncPage() {
                 ))}
               </tbody>
             </table>
-            {jobsData?.meta && jobsData.meta.totalPages > 1 && (
+            {jobsData?.meta && jobsData.meta.total > 0 && (
               <div className="px-4 pb-4">
                 <Pagination meta={jobsData.meta} onPageChange={setJobsPage} />
               </div>
@@ -440,8 +512,9 @@ export function SyncPage() {
 
         <TabsContent value="failed">
           <p className="mb-3 text-sm text-muted-foreground">
-            Articles where the last sync attempt failed. Trigger Sync on the list
-            retries all of these automatically — per-article Retry is optional.
+            Articles where the last sync attempt failed. Trigger Sync on the
+            list retries all of these automatically — per-article Retry is
+            optional.
           </p>
           <div className="rounded-lg border border-border bg-card">
             <table className="w-full text-sm">
@@ -487,15 +560,11 @@ export function SyncPage() {
                     key={fa._id}
                     className="border-b border-border/50 last:border-0"
                   >
-                    <td className="px-4 py-3 font-mono text-xs">
-                      {fa.articleNumber}
-                    </td>
+                    <td className="px-4 py-3 text-xs">{fa.articleNumber}</td>
                     <td className="px-4 py-3 text-muted-foreground max-w-sm truncate">
                       {fa.reason}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono">
-                      {fa.retryCount}
-                    </td>
+                    <td className="px-4 py-3 text-right">{fa.retryCount}</td>
                     <td className="px-4 py-3 text-muted-foreground text-xs">
                       {formatRelative(fa.updatedAt ?? fa.createdAt)}
                     </td>
@@ -526,11 +595,11 @@ export function SyncPage() {
       </Tabs>
 
       <Dialog open={triggerDialogOpen} onOpenChange={setTriggerDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md overflow-visible">
           <DialogHeader>
             <DialogTitle>Trigger Sync</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-2">
+          <div className="min-w-0 space-y-3 py-2">
             <p className="text-sm text-muted-foreground">{scopeHint}</p>
 
             <div className="space-y-1.5">
@@ -557,34 +626,25 @@ export function SyncPage() {
             </div>
 
             {selectedClientId && (
-              <div className="space-y-1.5">
+              <div className="relative min-w-0 space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">
                   List
                 </label>
-                <Select
+                <SearchableListSelect
+                  clientId={selectedClientId}
                   value={selectedListId}
-                  onValueChange={(v) => {
+                  onChange={(v) => {
                     setSelectedListId(v);
                     setTriggerError('');
                   }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select list" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_LISTS}>
-                      All lists (one job per list)
-                    </SelectItem>
-                    {syncableLists.map((l) => (
-                      <SelectItem key={l._id} value={l._id}>
-                        {l.name}
-                        {l.totalArticles > 0
-                          ? ` · ${l.totalArticles.toLocaleString()} articles`
-                          : ''}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  portaled={false}
+                  showAllOption
+                  allOptionValue={ALL_LISTS}
+                  allOptionLabel="All lists (one job per list)"
+                  excludeStatuses={['IMPORTING', 'SYNCING']}
+                  placeholder="Select list"
+                  className="w-full min-w-0"
+                />
               </div>
             )}
 

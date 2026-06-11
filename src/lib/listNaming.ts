@@ -19,14 +19,14 @@ function parseNoticeDateParts(noticeDate: string): {
   return { year, month, day };
 }
 
-/** clientslug-noticetype-year-month-date-noticename */
+/** clientslug-noticetype-noticename-year-month-date */
 export function buildListSlug(input: ListNamingInput): string {
   const { year, month, day } = parseNoticeDateParts(input.noticeDate);
   const typeSlug = toSlug(input.noticeType);
   const nameSlug = toSlug(input.noticeName);
   const clientSlug = toSlug(input.clientSlug);
 
-  return `${clientSlug}-${typeSlug}-${year}-${month}-${day}-${nameSlug}`;
+  return `${clientSlug}-${typeSlug}-${nameSlug}-${year}-${month}-${day}`;
 }
 
 export function buildListName(input: ListNamingInput): string {

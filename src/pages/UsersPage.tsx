@@ -42,10 +42,10 @@ import type { UserRole, PublicUser } from '@/types';
 // but we want it inline. Could also inject authApi.register endpoint later.
 
 const registerSchema = z.object({
-  email:    z.string().email('Enter a valid email'),
+  email: z.string().email('Enter a valid email'),
   password: z.string().min(8, 'Min 8 characters'),
-  role:     z.enum(['admin', 'customer']),
-  name:     z.string().min(1, 'Name is required'),
+  role: z.enum(['admin', 'customer']),
+  name: z.string().min(1, 'Name is required'),
   clientId: z.string().optional(),
 });
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -60,10 +60,17 @@ function RegisterUserDialog({
   clientOptions: { _id: string; name: string }[];
 }) {
   const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
-  const token  = useAppSelector((s) => s.auth.token);
+  const token = useAppSelector((s) => s.auth.token);
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
-  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<RegisterFormValues>({
+  const [error, setError] = useState('');
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { errors },
+  } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { role: 'customer' },
   });
@@ -75,11 +82,14 @@ function RegisterUserDialog({
     try {
       const res = await fetch(`${apiUrl}/api/v1/auth/register`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(values),
       });
       if (!res.ok) {
-        const data = await res.json() as { error?: string };
+        const data = (await res.json()) as { error?: string };
         throw new Error(data.error ?? 'Registration failed');
       }
       reset();
@@ -101,22 +111,45 @@ function RegisterUserDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5 col-span-2">
               <Label>Email</Label>
-              <Input type="email" placeholder="user@example.com" {...register('email')} />
-              {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+              <Input
+                type="email"
+                placeholder="user@example.com"
+                {...register('email')}
+              />
+              {errors.email && (
+                <p className="text-xs text-destructive">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5 col-span-2">
               <Label>Password</Label>
-              <Input type="password" placeholder="Min 8 characters" {...register('password')} />
-              {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+              <Input
+                type="password"
+                placeholder="Min 8 characters"
+                {...register('password')}
+              />
+              {errors.password && (
+                <p className="text-xs text-destructive">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Name</Label>
               <Input placeholder="Full name" {...register('name')} />
-              {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+              {errors.name && (
+                <p className="text-xs text-destructive">
+                  {errors.name.message}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Role</Label>
-              <Select defaultValue="customer" onValueChange={(v) => setValue('role', v as UserRole)}>
+              <Select
+                defaultValue="customer"
+                onValueChange={(v) => setValue('role', v as UserRole)}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -128,15 +161,24 @@ function RegisterUserDialog({
             </div>
             {role === 'customer' && (
               <div className="space-y-1.5 col-span-2">
-                <Label>Assign to Client <span className="text-muted-foreground">(optional)</span></Label>
-                <Select onValueChange={(v) => setValue('clientId', v === '_none' ? undefined : v)}>
+                <Label>
+                  Assign to Client{' '}
+                  <span className="text-muted-foreground">(optional)</span>
+                </Label>
+                <Select
+                  onValueChange={(v) =>
+                    setValue('clientId', v === '_none' ? undefined : v)
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="No client" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="_none">No client</SelectItem>
                     {clientOptions.map((c) => (
-                      <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>
+                      <SelectItem key={c._id} value={c._id}>
+                        {c.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -151,7 +193,9 @@ function RegisterUserDialog({
           )}
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create User
@@ -199,13 +243,17 @@ function AssignClientDialog({
             <SelectContent>
               <SelectItem value="_none">No client (unassign)</SelectItem>
               {clientOptions.map((c) => (
-                <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>
+                <SelectItem key={c._id} value={c._id}>
+                  {c.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
           <Button onClick={handleSave} disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save
@@ -254,11 +302,13 @@ function UserRow({
           <p className="text-xs text-muted-foreground">{user.email}</p>
         </td>
         <td className="px-4 py-3">
-          <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium capitalize ${
-            user.role === 'admin'
-              ? 'bg-purple-100 text-purple-700 border-purple-200'
-              : 'bg-blue-100 text-blue-700 border-blue-200'
-          }`}>
+          <span
+            className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium capitalize ${
+              user.role === 'admin'
+                ? 'bg-purple-100 text-purple-700 border-purple-200'
+                : 'bg-blue-100 text-blue-700 border-blue-200'
+            }`}
+          >
             {user.role}
           </span>
         </td>
@@ -266,19 +316,28 @@ function UserRow({
           {clientName ?? (user.clientId ? user.clientId.slice(-8) : '—')}
         </td>
         <td className="px-4 py-3">
-          <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium ${
-            user.isActive
-              ? 'bg-green-100 text-green-700 border-green-200'
-              : 'bg-gray-100 text-gray-400 border-gray-200'
-          }`}>
+          <span
+            className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium ${
+              user.isActive
+                ? 'bg-green-100 text-green-700 border-green-200'
+                : 'bg-gray-100 text-gray-400 border-gray-200'
+            }`}
+          >
             {user.isActive ? 'Active' : 'Inactive'}
           </span>
         </td>
-        <td className="px-4 py-3 text-muted-foreground">{formatDate(user.id ? undefined : undefined)}</td>
+        <td className="px-4 py-3 text-muted-foreground">
+          {formatDate(user.id ? undefined : undefined)}
+        </td>
         <td className="px-4 py-3 text-right">
           <div className="flex justify-end gap-1">
             {user.role === 'customer' && (
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setAssignOpen(true)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0"
+                onClick={() => setAssignOpen(true)}
+              >
                 <Link2 className="h-3.5 w-3.5" />
               </Button>
             )}
@@ -291,16 +350,31 @@ function UserRow({
               <Pencil className="h-3.5 w-3.5" />
             </Button>
             {user.isActive ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 text-muted-foreground"
-                title="Deactivate user"
-                disabled={user.id === currentUserId}
-                onClick={() => deactivate(user.id)}
-              >
-                <UserX className="h-3.5 w-3.5" />
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-muted-foreground"
+                  title="Deactivate user"
+                  disabled={user.id === currentUserId}
+                  onClick={() => deactivate(user.id)}
+                >
+                  <UserX className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                  title="Delete user permanently"
+                  disabled={user.id === currentUserId}
+                  onClick={() => {
+                    setDeleteError('');
+                    setDeleteOpen(true);
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </>
             ) : (
               <Button
                 variant="ghost"
@@ -312,19 +386,6 @@ function UserRow({
                 <UserCheck className="h-3.5 w-3.5" />
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-              title="Delete user permanently"
-              disabled={user.id === currentUserId}
-              onClick={() => {
-                setDeleteError('');
-                setDeleteOpen(true);
-              }}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
           </div>
         </td>
       </tr>
@@ -353,13 +414,15 @@ function UserRow({
 
 export function UsersPage() {
   const currentUser = useAppSelector((s) => s.auth.user);
-  const [page, setPage]           = useState(1);
+  const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
-  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'customer'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'customer'>(
+    'all',
+  );
 
   const { data: clientsData } = useListClientsQuery({ limit: 100 });
-  const { data, isLoading }   = useListUsersQuery({
-    role:  roleFilter === 'all' ? undefined : roleFilter,
+  const { data, isLoading } = useListUsersQuery({
+    role: roleFilter === 'all' ? undefined : roleFilter,
     page,
     limit: 20,
   });
@@ -378,7 +441,13 @@ export function UsersPage() {
         }
       />
 
-      <Tabs value={roleFilter} onValueChange={(v) => { setRoleFilter(v as typeof roleFilter); setPage(1); }}>
+      <Tabs
+        value={roleFilter}
+        onValueChange={(v) => {
+          setRoleFilter(v as typeof roleFilter);
+          setPage(1);
+        }}
+      >
         <TabsList className="mb-4">
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="admin">Admins</TabsTrigger>
@@ -390,12 +459,24 @@ export function UsersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">User</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Role</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Client</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Created</th>
-                  <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">Actions</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                    User
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                    Role
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                    Client
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                    Status
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                    Created
+                  </th>
+                  <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -408,7 +489,10 @@ export function UsersPage() {
                 )}
                 {!isLoading && data?.data.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                    <td
+                      colSpan={6}
+                      className="px-4 py-8 text-center text-muted-foreground"
+                    >
                       No users found.
                     </td>
                   </tr>

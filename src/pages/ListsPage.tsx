@@ -39,7 +39,10 @@ import {
 } from '@/lib/listProgress';
 import { ListStatusBadge } from '@/components/shared/StatusBadge';
 import { Pagination } from '@/components/shared/Pagination';
-import { usePollListsWhileActive } from '@/hooks/usePollListsWhileActive';
+import {
+  usePollListsWhileActive,
+  usePollListsByStatus,
+} from '@/hooks/usePollListsWhileActive';
 import { useTriggerSyncMutation } from '@/store/api/syncApi';
 import { useAppSelector } from '@/store';
 import { useListClientsQuery } from '@/store/api/clientsApi';
@@ -108,7 +111,6 @@ export function ListsPage() {
     : (yearParam ?? String(currentYear()));
   const filterMonth = searchParams.get('month') ?? '';
   const filterNoticeType = searchParams.get('noticeType') ?? '';
-
   useEffect(() => {
     if (!searchParams.has('year')) {
       const next = new URLSearchParams(searchParams);
@@ -139,6 +141,7 @@ export function ListsPage() {
   const [cancelError, setCancelError] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [exportingListId, setExportingListId] = useState<string | null>(null);
+  const [opsPollForced, setOpsPollForced] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -170,18 +173,46 @@ export function ListsPage() {
     [noticeTypesData],
   );
 
-  const { data, isLoading, isFetching } = usePollListsWhileActive({
-    clientId: clientIdFilter,
-    search: search || undefined,
-    year: showAllYears ? undefined : Number(filterYear),
-    month: filterMonth ? Number(filterMonth) : undefined,
-    noticeType: filterNoticeType || undefined,
-    page,
-    limit: 20,
-  });
+  const { data: importingOps } = usePollListsByStatus(
+    { clientId: clientIdFilter, status: 'IMPORTING', limit: 50 },
+    opsPollForced,
+  );
+  const { data: syncingOps } = usePollListsByStatus(
+    { clientId: clientIdFilter, status: 'SYNCING', limit: 50 },
+    opsPollForced,
+  );
 
-  const importingLists = data?.data.filter((l) => l.status === 'IMPORTING') ?? [];
-  const syncingLists = data?.data.filter((l) => l.status === 'SYNCING') ?? [];
+  const { data, isLoading, isFetching } = usePollListsWhileActive(
+    {
+      clientId: clientIdFilter,
+      search: search || undefined,
+      year: showAllYears ? undefined : Number(filterYear),
+      month: filterMonth ? Number(filterMonth) : undefined,
+      noticeType: filterNoticeType || undefined,
+      page,
+      limit: 20,
+    },
+    { forcePoll: opsPollForced },
+  );
+
+  const importingLists = importingOps?.data ?? [];
+  const syncingLists = syncingOps?.data ?? [];
+
+  const liveListById = useMemo(() => {
+    const map = new Map<string, List>();
+    for (const l of importingOps?.data ?? []) map.set(l._id, l);
+    for (const l of syncingOps?.data ?? []) map.set(l._id, l);
+    for (const l of data?.data ?? []) map.set(l._id, l);
+    return map;
+  }, [importingOps?.data, syncingOps?.data, data?.data]);
+
+  useEffect(() => {
+    if (!opsPollForced) return;
+    if (importingLists.length === 0 && syncingLists.length === 0) {
+      const timer = setTimeout(() => setOpsPollForced(false), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [opsPollForced, importingLists.length, syncingLists.length]);
 
   const yearOptions = useMemo(() => {
     const y = currentYear();
@@ -246,8 +277,8 @@ export function ListsPage() {
   const [createList, { isLoading: creating }] = useCreateListMutation();
   const [updateList, { isLoading: updating }] = useUpdateListMutation();
   const [archiveList] = useArchiveListMutation();
-  const [unarchiveList] = useUnarchiveListMutation();
   const [deleteList, { isLoading: deleting }] = useDeleteListMutation();
+  const [unarchiveList] = useUnarchiveListMutation();
   const [uploadFile] = useUploadListFileMutation();
   const [cancelImport, { isLoading: cancellingImport }] =
     useCancelImportMutation();
@@ -402,6 +433,7 @@ export function ListsPage() {
   async function handleFileUpload(listId: string, file: File) {
     setUploadingListId(listId);
     setUploadError('');
+    setOpsPollForced(true);
     try {
       await uploadFile({ listId, file }).unwrap();
       toast.success('Import started — progress updates on this page');
@@ -464,6 +496,7 @@ export function ListsPage() {
 
   async function handleTriggerSync() {
     if (!syncTarget) return;
+    setOpsPollForced(true);
     try {
       const result = await triggerSync({
         clientId: syncTarget.clientId,
@@ -688,7 +721,9 @@ export function ListsPage() {
                 </td>
               </tr>
             )}
-            {data?.data.map((list) => (
+            {data?.data.map((row) => {
+              const list = liveListById.get(row._id) ?? row;
+              return (
               <tr
                 key={list._id}
                 className="border-b border-border/50 last:border-0 hover:bg-muted/20 cursor-pointer"
@@ -790,7 +825,8 @@ export function ListsPage() {
                   />
                 </td>
               </tr>
-            ))}
+            );
+            })}
           </tbody>
         </table>
 
@@ -905,7 +941,7 @@ export function ListsPage() {
                   </p>
                 )}
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Format: client-noticetype-year-month-date-noticename
+                  Format: client-noticetype-noticename-year-month-date
                 </p>
               </div>
             )}
