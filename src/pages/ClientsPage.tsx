@@ -108,7 +108,10 @@ export function ClientsPage() {
       reset();
     } catch (err) {
       setSubmitError(
-        getApiErrorMessage(err, editing ? 'Failed to update client.' : 'Failed to create client.'),
+        getApiErrorMessage(
+          err,
+          editing ? 'Failed to update client.' : 'Failed to create client.',
+        ),
       );
     }
   }
@@ -217,7 +220,10 @@ export function ClientsPage() {
                               await deactivateClient(client._id).unwrap();
                               toast.success('Client deactivated');
                             } catch (err) {
-                              toast.apiError(err, 'Failed to deactivate client');
+                              toast.apiError(
+                                err,
+                                'Failed to deactivate client',
+                              );
                             }
                           }}
                         >
@@ -336,7 +342,7 @@ export function ClientsPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDeleteClient}
         title="Delete client"
-        description="This deactivates the client and removes them from active use. Data remains in the system."
+        description="This will remove the client."
         entityName={deleteTarget?.name ?? ''}
         isLoading={deleting}
         error={deleteError}

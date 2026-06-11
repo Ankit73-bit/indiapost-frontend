@@ -86,15 +86,18 @@ export const clientsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    deleteClient: build.mutation<Client, string>({
+    deleteClient: build.mutation<{ deleted: boolean; clientId: string }, string>({
       query: (clientId) => ({
-        url: `/api/v1/clients/${clientId}`,
-        method: 'DELETE',
+        url: `/api/v1/clients/${clientId}/soft-delete`,
+        method: 'POST',
       }),
-      transformResponse: (res: ApiSuccess<Client>) => res.data,
+      transformResponse: (
+        res: ApiSuccess<{ deleted: boolean; clientId: string }>,
+      ) => res.data,
       invalidatesTags: (_r, _e, clientId) => [
         { type: 'Client', id: clientId },
         { type: 'Client', id: 'LIST' },
+        { type: 'List', id: 'LIST' },
       ],
     }),
   }),

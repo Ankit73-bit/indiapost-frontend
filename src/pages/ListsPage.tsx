@@ -30,7 +30,11 @@ import { OperationProgressBar } from '@/components/shared/OperationProgressBar';
 import { ListActionsMenu } from '@/components/lists/ListActionsMenu';
 import { toast } from '@/lib/toast';
 import { downloadListExport } from '@/lib/exportList';
-import { buildListName, buildListSlug, mergeNoticeTypes } from '@/lib/listNaming';
+import {
+  buildListName,
+  buildListSlug,
+  mergeNoticeTypes,
+} from '@/lib/listNaming';
 import {
   importPercent,
   syncPercent,
@@ -113,7 +117,8 @@ export function ListsPage() {
     : (yearParam ?? String(currentYear()));
   const filterMonth = searchParams.get('month') ?? '';
   const filterNoticeType = searchParams.get('noticeType') ?? '';
-  const showArchivedOnly = searchParams.get('visibility') === VISIBILITY_ARCHIVED;
+  const showArchivedOnly =
+    searchParams.get('visibility') === VISIBILITY_ARCHIVED;
 
   useEffect(() => {
     if (!searchParams.has('year')) {
@@ -127,9 +132,7 @@ export function ListsPage() {
   const [searchInput, setSearchInput] = useState(
     () => searchParams.get('search') ?? '',
   );
-  const [search, setSearch] = useState(
-    () => searchParams.get('search') ?? '',
-  );
+  const [search, setSearch] = useState(() => searchParams.get('search') ?? '');
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<List | null>(null);
@@ -226,12 +229,14 @@ export function ListsPage() {
 
   const hasFilters = Boolean(
     search ||
-      filterMonth ||
-      filterNoticeType ||
-      showArchivedOnly ||
-      clientIdFilter ||
-      showAllYears ||
-      (!showAllYears && yearParam !== null && yearParam !== String(currentYear())),
+    filterMonth ||
+    filterNoticeType ||
+    showArchivedOnly ||
+    clientIdFilter ||
+    showAllYears ||
+    (!showAllYears &&
+      yearParam !== null &&
+      yearParam !== String(currentYear())),
   );
 
   function setClientFilter(clientId: string | undefined) {
@@ -269,7 +274,10 @@ export function ListsPage() {
     );
   }
 
-  function buildNameFromValues(values: FormValues, clientId: string): string | null {
+  function buildNameFromValues(
+    values: FormValues,
+    clientId: string,
+  ): string | null {
     const clientSlug = resolveClientSlug(clientId);
     if (!clientSlug) return null;
     return buildListName({
@@ -311,7 +319,12 @@ export function ListsPage() {
   const generatedSlugPreview = useMemo(() => {
     const clientId = editing?.clientId ?? watchedClientId;
     const clientSlug = clientId ? resolveClientSlug(clientId) : undefined;
-    if (!clientSlug || !watchedNoticeType || !watchedNoticeName || !watchedNoticeDate) {
+    if (
+      !clientSlug ||
+      !watchedNoticeType ||
+      !watchedNoticeName ||
+      !watchedNoticeDate
+    ) {
       return null;
     }
     return buildListSlug({
@@ -431,7 +444,10 @@ export function ListsPage() {
       reset();
     } catch (err) {
       setSubmitError(
-        getApiErrorMessage(err, editing ? 'Failed to update list.' : 'Failed to create list.'),
+        getApiErrorMessage(
+          err,
+          editing ? 'Failed to update list.' : 'Failed to create list.',
+        ),
       );
     }
   }
@@ -748,122 +764,124 @@ export function ListsPage() {
             {data?.data.map((row) => {
               const list = liveListById.get(row._id) ?? row;
               return (
-              <tr
-                key={list._id}
-                className="border-b border-border/50 last:border-0 hover:bg-muted/20 cursor-pointer"
-                onClick={() =>
-                  navigate(
-                    `/articles?clientId=${list.clientId}&listId=${list._id}`,
-                  )
-                }
-              >
-                <td className="px-4 py-3 font-medium font-mono text-xs">
-                  {list.name}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground text-xs">
-                  {activeClients.find((c) => c._id === list.clientId)?.name ??
-                    clientsData?.data.find((c) => c._id === list.clientId)
-                      ?.name ??
-                    list.clientId.slice(-6)}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {list.noticeType ?? '—'}
-                </td>
-                <td className="px-4 py-3">
-                  <ListStatusBadge status={list.status} />
-                  {list.status === 'IMPORTING' && list.importProgress && (
-                    <div className="mt-2">
-                      <OperationProgressBar
-                        variant="import"
-                        percent={importPercent(list)}
-                        label={`${list.importProgress.processedRows.toLocaleString()} / ${list.importProgress.totalRows.toLocaleString()} rows${
-                          (list.importProgress.failedRows ?? 0) > 0
-                            ? ` · ${list.importProgress.failedRows} failed`
-                            : ''
-                        }`}
-                      />
-                    </div>
-                  )}
-                  {list.status === 'SYNCING' && list.syncProgress && (
-                    <div className="mt-2">
-                      <OperationProgressBar
-                        variant="sync"
-                        percent={syncPercent(list)}
-                        label={`${list.syncProgress.processedCount.toLocaleString()} / ${list.syncProgress.totalArticles.toLocaleString()} articles${
-                          list.syncProgress.failedCount > 0
-                            ? ` · ${list.syncProgress.failedCount} failed`
-                            : ''
-                        }`}
-                      />
-                    </div>
-                  )}
-                  {list.status === 'ACTIVE' && importResultSummary(list) && (
-                    <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
-                      {importResultSummary(list)}
-                    </p>
-                  )}
-                  {list.importError && (
-                    <p className="mt-1 max-w-[180px] text-xs text-destructive">
-                      {list.importError}
-                    </p>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-right font-mono">
-                  {list.totalArticles.toLocaleString()}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {formatDate(list.dispatchDate)}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground text-xs">
-                  {list.uploadedFile
-                    ? `${list.uploadedFile.originalName} (${formatBytes(list.uploadedFile.sizeBytes)})`
-                    : '—'}
-                </td>
-                <td
-                  className="px-4 py-3 text-right"
-                  onClick={(e) => e.stopPropagation()}
+                <tr
+                  key={list._id}
+                  className="border-b border-border/50 last:border-0 hover:bg-muted/20 cursor-pointer"
+                  onClick={() =>
+                    navigate(
+                      `/articles?clientId=${list.clientId}&listId=${list._id}`,
+                    )
+                  }
                 >
-                  <ListActionsMenu
-                    list={list}
-                    isAdmin={isAdmin}
-                    uploading={uploadingListId === list._id}
-                    exporting={exportingListId === list._id}
-                    triggeringSync={triggeringSync}
-                    onUpload={(file) => handleFileUpload(list._id, file)}
-                    onExport={() => handleExport(list._id, list.name)}
-                    onOpenPdfs={() =>
-                      navigate(
-                        `/articles?clientId=${list.clientId}&listId=${list._id}&pdfs=1`,
-                      )
-                    }
-                    onTriggerSync={() => setSyncTarget(list)}
-                    onEdit={() => openEdit(list)}
-                    onArchive={async () => {
-                      try {
-                        await archiveList(list._id).unwrap();
-                        toast.success('List archived — switch to Archived to view or restore');
-                      } catch (err) {
-                        toast.apiError(err, 'Failed to archive list');
+                  <td className="px-4 py-3 font-medium font-mono text-xs">
+                    {list.name}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs">
+                    {activeClients.find((c) => c._id === list.clientId)?.name ??
+                      clientsData?.data.find((c) => c._id === list.clientId)
+                        ?.name ??
+                      list.clientId.slice(-6)}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {list.noticeType ?? '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <ListStatusBadge status={list.status} />
+                    {list.status === 'IMPORTING' && list.importProgress && (
+                      <div className="mt-2">
+                        <OperationProgressBar
+                          variant="import"
+                          percent={importPercent(list)}
+                          label={`${list.importProgress.processedRows.toLocaleString()} / ${list.importProgress.totalRows.toLocaleString()} rows${
+                            (list.importProgress.failedRows ?? 0) > 0
+                              ? ` · ${list.importProgress.failedRows} failed`
+                              : ''
+                          }`}
+                        />
+                      </div>
+                    )}
+                    {list.status === 'SYNCING' && list.syncProgress && (
+                      <div className="mt-2">
+                        <OperationProgressBar
+                          variant="sync"
+                          percent={syncPercent(list)}
+                          label={`${list.syncProgress.processedCount.toLocaleString()} / ${list.syncProgress.totalArticles.toLocaleString()} articles${
+                            list.syncProgress.failedCount > 0
+                              ? ` · ${list.syncProgress.failedCount} failed`
+                              : ''
+                          }`}
+                        />
+                      </div>
+                    )}
+                    {list.status === 'ACTIVE' && importResultSummary(list) && (
+                      <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
+                        {importResultSummary(list)}
+                      </p>
+                    )}
+                    {list.importError && (
+                      <p className="mt-1 max-w-[180px] text-xs text-destructive">
+                        {list.importError}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right font-mono">
+                    {list.totalArticles.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {formatDate(list.dispatchDate)}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground text-xs">
+                    {list.uploadedFile
+                      ? `${list.uploadedFile.originalName} (${formatBytes(list.uploadedFile.sizeBytes)})`
+                      : '—'}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-right"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ListActionsMenu
+                      list={list}
+                      isAdmin={isAdmin}
+                      uploading={uploadingListId === list._id}
+                      exporting={exportingListId === list._id}
+                      triggeringSync={triggeringSync}
+                      onUpload={(file) => handleFileUpload(list._id, file)}
+                      onExport={() => handleExport(list._id, list.name)}
+                      onOpenPdfs={() =>
+                        navigate(
+                          `/articles?clientId=${list.clientId}&listId=${list._id}&pdfs=1`,
+                        )
                       }
-                    }}
-                    onUnarchive={async () => {
-                      try {
-                        await unarchiveList(list._id).unwrap();
-                        toast.success('List restored');
-                      } catch (err) {
-                        toast.apiError(err, 'Failed to restore list');
-                      }
-                    }}
-                    onDelete={() => {
-                      setDeleteError('');
-                      setDeleteTarget(list);
-                    }}
-                    onCancelImport={() => setCancelImportTarget(list)}
-                    onCancelSync={() => setCancelSyncTarget(list)}
-                  />
-                </td>
-              </tr>
-            );
+                      onTriggerSync={() => setSyncTarget(list)}
+                      onEdit={() => openEdit(list)}
+                      onArchive={async () => {
+                        try {
+                          await archiveList(list._id).unwrap();
+                          toast.success(
+                            'List archived — switch to Archived to view or restore',
+                          );
+                        } catch (err) {
+                          toast.apiError(err, 'Failed to archive list');
+                        }
+                      }}
+                      onUnarchive={async () => {
+                        try {
+                          await unarchiveList(list._id).unwrap();
+                          toast.success('List restored');
+                        } catch (err) {
+                          toast.apiError(err, 'Failed to restore list');
+                        }
+                      }}
+                      onDelete={() => {
+                        setDeleteError('');
+                        setDeleteTarget(list);
+                      }}
+                      onCancelImport={() => setCancelImportTarget(list)}
+                      onCancelSync={() => setCancelSyncTarget(list)}
+                    />
+                  </td>
+                </tr>
+              );
             })}
           </tbody>
         </table>
@@ -942,7 +960,9 @@ export function ListsPage() {
 
             <NoticeTypeCombobox
               value={watchedNoticeType ?? ''}
-              onChange={(v) => setValue('noticeType', v, { shouldValidate: true })}
+              onChange={(v) =>
+                setValue('noticeType', v, { shouldValidate: true })
+              }
               knownTypes={noticeTypesData}
               error={errors.noticeType?.message}
             />
@@ -1050,7 +1070,7 @@ export function ListsPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDeleteList}
         title="Delete list"
-        description="This removes the list from view. Data remains in the system."
+        description="This will remove the list."
         entityName={deleteTarget?.name ?? ''}
         isLoading={deleting}
         error={deleteError}
