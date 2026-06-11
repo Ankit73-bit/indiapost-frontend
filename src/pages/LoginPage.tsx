@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLoginMutation } from '@/store/api/authApi';
 import { setCredentials } from '@/store/authSlice';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useAppDispatch, useAppSelector } from '@/store';
 
 const schema = z.object({
@@ -51,7 +52,8 @@ export function LoginPage() {
       : null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-muted/30 px-4">
+      <ThemeToggle className="absolute right-4 top-4 h-8 w-8 p-0" />
       <div className="w-full max-w-sm">
         {/* Header */}
         <div className="mb-8 text-center">

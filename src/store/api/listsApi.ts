@@ -165,12 +165,29 @@ export const listsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    listListPdfs: build.query<ListPdfsSummary, { listId: string; clientId: string }>({
-      query: ({ listId, clientId }) => ({
+    listListPdfs: build.query<
+      { data: ListPdfsSummary; meta?: PaginationMeta },
+      {
+        listId: string;
+        clientId: string;
+        page?: number;
+        limit?: number;
+        search?: string;
+      }
+    >({
+      query: ({ listId, clientId, page, limit, search }) => ({
         url: `/api/v1/lists/${listId}/pdfs`,
-        params: { clientId },
+        params: {
+          clientId,
+          page,
+          limit,
+          ...(search ? { search } : {}),
+        },
       }),
-      transformResponse: (res: ApiSuccess<ListPdfsSummary>) => res.data,
+      transformResponse: (res: ApiSuccess<ListPdfsSummary>) => ({
+        data: res.data,
+        meta: res.meta,
+      }),
       providesTags: (_r, _e, { listId }) => [{ type: 'ListPdfs', id: listId }],
     }),
   }),

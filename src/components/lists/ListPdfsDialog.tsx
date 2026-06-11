@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useRef, useState } from 'react';
 import {
   Download,
   Eye,
@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Pagination } from '@/components/shared/Pagination';
 import { toast } from '@/lib/toast';
 import { formatBytes, formatDateTime, getApiErrorMessage } from '@/lib/helpers';
 import {
@@ -28,6 +29,14 @@ import {
   useGenerateListPdfsMutation,
   useListListPdfsQuery,
 } from '@/store/api/listsApi';
+
+const PDF_PAGE_SIZE = 50;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
 
 function pdfProgressPercent(processed: number, total: number): number {
   if (total <= 0) return 0;
@@ -44,69 +53,59 @@ interface ListPdfsDialogProps {
   isAdmin: boolean;
 }
 
-export function ListPdfsDialog({
-  open,
+type ListPdfsDialogBodyProps = Omit<ListPdfsDialogProps, 'open'>;
+
+function ListPdfsDialogBody({
   onClose,
   listId,
   clientId,
   listName,
   listSlug,
   isAdmin,
-}: ListPdfsDialogProps) {
+}: ListPdfsDialogBodyProps) {
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
+  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
-  const [pollPdfs, setPollPdfs] = useState(false);
-
-  const { data, isLoading, isFetching, refetch } = useListListPdfsQuery(
-    { listId, clientId },
-    { skip: !open, pollingInterval: open && pollPdfs ? 3000 : 0 },
-  );
+  const querySearch = deferredSearch.trim() || undefined;
+  const aliveRef = useRef(true);
 
   useEffect(() => {
-    setPollPdfs(Boolean(data?.pdfProgress));
-  }, [data?.pdfProgress]);
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
 
-  const summary = data;
+  const { data, isLoading, isFetching, refetch } = useListListPdfsQuery({
+    listId,
+    clientId,
+    page,
+    limit: PDF_PAGE_SIZE,
+    search: querySearch,
+  });
+
+  const summary = data?.data;
+  const pdfMeta = data?.meta;
+  const isSearchPending = search !== deferredSearch;
 
   const [generatePdfs, { isLoading: generating }] =
     useGenerateListPdfsMutation();
 
   const pdfs = summary?.generatedPdfs ?? [];
-  const filtered = useMemo(() => {
-    const q = search.trim().toUpperCase();
-    if (!q) return pdfs;
-    return pdfs.filter((p) => p.articleNumber.toUpperCase().includes(q));
-  }, [pdfs, search]);
 
-  useEffect(() => {
-    if (!open) {
-      setSearch('');
-      setSelected(new Set());
-      setBusyAction(null);
-    }
-  }, [open]);
+  const allPageSelected =
+    pdfs.length > 0 && pdfs.every((p) => selected.has(p.articleNumber));
 
-  useEffect(() => {
-    setSelected((prev) => {
-      const valid = new Set(pdfs.map((p) => p.articleNumber));
-      const next = new Set([...prev].filter((n) => valid.has(n)));
-      return next.size === prev.size ? prev : next;
-    });
-  }, [pdfs]);
-
-  const allFilteredSelected =
-    filtered.length > 0 &&
-    filtered.every((p) => selected.has(p.articleNumber));
-
-  function toggleAllFiltered() {
+  function toggleAllOnPage() {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (allFilteredSelected) {
-        for (const p of filtered) next.delete(p.articleNumber);
+      if (allPageSelected) {
+        for (const p of pdfs) next.delete(p.articleNumber);
       } else {
-        for (const p of filtered) next.add(p.articleNumber);
+        for (const p of pdfs) next.add(p.articleNumber);
       }
       return next;
     });
@@ -121,13 +120,21 @@ export function ListPdfsDialog({
     });
   }
 
+  async function watchPdfProgress() {
+    while (aliveRef.current) {
+      const result = await refetch().unwrap();
+      if (!result.data.pdfProgress) return;
+      await sleep(3000);
+    }
+  }
+
   async function handleGenerate() {
     try {
       const result = await generatePdfs({ listId, clientId }).unwrap();
       toast.success(
         `PDF generation started for ${result.totalArticles.toLocaleString()} articles`,
       );
-      void refetch();
+      void watchPdfProgress();
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Failed to start PDF generation'));
     }
@@ -178,7 +185,7 @@ export function ListPdfsDialog({
     setBusyAction('zip-all');
     try {
       await downloadPdfsZip(listId, clientId, listSlug);
-      toast.success(`Downloaded ${pdfs.length} PDFs as ZIP`);
+      toast.success(`Downloaded ${summary?.pdfCount ?? 0} PDFs as ZIP`);
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Failed to download all PDFs'));
     } finally {
@@ -192,8 +199,7 @@ export function ListPdfsDialog({
     isAdmin && !progress && !generating && (summary?.totalArticles ?? 0) > 0;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+    <>
         <DialogHeader className="shrink-0 space-y-1 border-b border-border px-5 py-4">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary" />
@@ -293,7 +299,7 @@ export function ListPdfsDialog({
             <Button
               variant="outline"
               size="sm"
-              disabled={pdfs.length === 0 || busyAction === 'zip-all'}
+              disabled={(summary?.pdfCount ?? 0) === 0 || busyAction === 'zip-all'}
               onClick={() => void handleDownloadAll()}
             >
               {busyAction === 'zip-all' ? (
@@ -339,7 +345,10 @@ export function ListPdfsDialog({
               placeholder="Search article number…"
               className="pl-8"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
             />
           </div>
 
@@ -351,9 +360,9 @@ export function ListPdfsDialog({
                     <input
                       type="checkbox"
                       className="h-3.5 w-3.5 rounded border-border"
-                      checked={allFilteredSelected}
-                      onChange={toggleAllFiltered}
-                      aria-label="Select all visible PDFs"
+                      checked={allPageSelected}
+                      onChange={toggleAllOnPage}
+                      aria-label="Select all PDFs on this page"
                     />
                   </th>
                   <th className="px-3 py-2 text-left font-medium text-muted-foreground">
@@ -371,20 +380,20 @@ export function ListPdfsDialog({
                 </tr>
               </thead>
               <tbody>
-                {isLoading && (
+                {(isLoading || isSearchPending) && (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center">
                       <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
                     </td>
                   </tr>
                 )}
-                {!isLoading && filtered.length === 0 && (
+                {!isLoading && !isSearchPending && pdfs.length === 0 && (
                   <tr>
                     <td
                       colSpan={5}
                       className="px-4 py-10 text-center text-muted-foreground"
                     >
-                      {pdfs.length === 0
+                      {(summary?.pdfCount ?? 0) === 0
                         ? isAdmin
                           ? 'No PDFs yet. Sync tracking, then click Generate PDFs.'
                           : 'No PDFs available for this list yet.'
@@ -392,7 +401,7 @@ export function ListPdfsDialog({
                     </td>
                   </tr>
                 )}
-                {filtered.map((pdf) => {
+                {pdfs.map((pdf) => {
                   const isSelected = selected.has(pdf.articleNumber);
                   const viewBusy = busyAction === `view-${pdf.articleNumber}`;
                   const dlBusy = busyAction === `dl-${pdf.articleNumber}`;
@@ -463,6 +472,11 @@ export function ListPdfsDialog({
                 })}
               </tbody>
             </table>
+            {pdfMeta && pdfMeta.total > 0 && (
+              <div className="px-3 pb-3">
+                <Pagination meta={pdfMeta} onPageChange={setPage} />
+              </div>
+            )}
           </div>
 
           {isAdmin && !progress && (summary?.pdfCount ?? 0) > 0 && (
@@ -473,11 +487,34 @@ export function ListPdfsDialog({
           )}
         </div>
 
-        <DialogFooter className="shrink-0 border-t border-border px-5 py-3">
+        <DialogFooter className="shrink-0 border-t border-border px-7 py-3 mb-0">
           <Button variant="outline" onClick={onClose}>
             Close
           </Button>
         </DialogFooter>
+    </>
+  );
+}
+
+export function ListPdfsDialog({
+  open,
+  onClose,
+  listId,
+  clientId,
+  ...rest
+}: ListPdfsDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        {open ? (
+          <ListPdfsDialogBody
+            key={`${listId}:${clientId}`}
+            onClose={onClose}
+            listId={listId}
+            clientId={clientId}
+            {...rest}
+          />
+        ) : null}
       </DialogContent>
     </Dialog>
   );

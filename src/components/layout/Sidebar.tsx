@@ -11,6 +11,7 @@ import {
   UserCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { clearCredentials } from '@/store/authSlice';
 
@@ -72,8 +73,12 @@ export function Sidebar() {
         }
       </nav>
 
-      {/* User + Logout */}
+      {/* Theme + User */}
       <div className="border-t border-sidebar-border px-3 py-3">
+        <ThemeToggle
+          variant="sidebar"
+          className="mb-2 h-8 w-full justify-start gap-2.5 px-2 text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+        />
         <button
           onClick={() => navigate('/profile')}
           className="mb-2 flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent/60"
