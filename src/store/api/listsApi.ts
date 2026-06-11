@@ -90,7 +90,7 @@ export const listsApi = baseApi.injectEndpoints({
 
     deleteList: build.mutation<{ deleted: boolean; listId: string }, string>({
       query: (listId) => ({
-        url: `/api/v1/lists/${listId}/purge`,
+        url: `/api/v1/lists/${listId}/soft-delete`,
         method: 'POST',
       }),
       transformResponse: (

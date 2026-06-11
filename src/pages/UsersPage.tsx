@@ -33,6 +33,7 @@ import {
   useAssignClientMutation,
 } from '@/store/api/usersApi';
 import { useListClientsQuery } from '@/store/api/clientsApi';
+import { toast } from '@/lib/toast';
 import { formatDate, getApiErrorMessage } from '@/lib/helpers';
 import { useAppSelector } from '@/store';
 import type { UserRole, PublicUser } from '@/types';
@@ -289,6 +290,7 @@ function UserRow({
     try {
       await deleteUser(user.id).unwrap();
       setDeleteOpen(false);
+      toast.success('User deleted');
     } catch (err) {
       setDeleteError(getApiErrorMessage(err, 'Failed to delete user.'));
     }
@@ -365,7 +367,7 @@ function UserRow({
                   variant="ghost"
                   size="sm"
                   className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                  title="Delete user permanently"
+                  title="Delete user"
                   disabled={user.id === currentUserId}
                   onClick={() => {
                     setDeleteError('');
@@ -394,7 +396,7 @@ function UserRow({
         onClose={() => setDeleteOpen(false)}
         onConfirm={handleDeleteUser}
         title="Delete user"
-        description="This permanently removes the user account. They will no longer be able to sign in. This cannot be undone."
+        description="This deactivates the user account. They will no longer be able to sign in."
         entityName={user.name ?? user.email}
         isLoading={deleting}
         error={deleteError}

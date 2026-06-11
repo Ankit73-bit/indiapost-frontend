@@ -40,8 +40,14 @@ export const usersApi = baseApi.injectEndpoints({
 
     // ── Admin ─────────────────────────────────────────────────────────────────
 
-    listUsers: build.query<{ data: PublicUser[]; meta?: PaginationMeta }, ListUsersQuery | void>({
-      query: (params) => ({ url: '/api/v1/users', params: params ?? {} }),
+    listUsers: build.query<
+      { data: PublicUser[]; meta?: PaginationMeta },
+      ListUsersQuery | undefined
+    >({
+      query: (params) => ({
+        url: '/api/v1/users',
+        params: params ?? ({} satisfies ListUsersQuery),
+      }),
       transformResponse: (res: ApiSuccess<PublicUser[]>) => ({ data: res.data, meta: res.meta }),
       providesTags: (result) =>
         result

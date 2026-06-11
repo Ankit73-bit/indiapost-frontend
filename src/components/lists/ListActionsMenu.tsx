@@ -180,7 +180,7 @@ export function ListActionsMenu({
               onClick={onDelete}
             >
               <Trash2 className="h-3.5 w-3.5" />
-              Delete permanently
+              Delete
             </DropdownMenuItem>
           </>
         )}

@@ -12,9 +12,12 @@ export const clientsApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     listClients: build.query<
       { data: Client[]; meta?: PaginationMeta },
-      ListClientsQuery | void
+      ListClientsQuery | undefined
     >({
-      query: (params) => ({ url: '/api/v1/clients', params: params ?? {} }),
+      query: (params) => ({
+        url: '/api/v1/clients',
+        params: params ?? ({} satisfies ListClientsQuery),
+      }),
       transformResponse: (res: ApiSuccess<Client[]>) => ({
         data: res.data,
         meta: res.meta,
@@ -83,24 +86,17 @@ export const clientsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    deleteClient: build.mutation<{ deleted: boolean; clientId: string }, string>(
-      {
-        query: (clientId) => ({
-          url: `/api/v1/clients/${clientId}/purge`,
-          method: 'POST',
-        }),
-        transformResponse: (
-          res: ApiSuccess<{ deleted: boolean; clientId: string }>,
-        ) => res.data,
-        invalidatesTags: (_r, _e, clientId) => [
-          { type: 'Client', id: clientId },
-          { type: 'Client', id: 'LIST' },
-          { type: 'List', id: 'LIST' },
-          { type: 'Article', id: 'LIST' },
-          { type: 'User', id: 'LIST' },
-        ],
-      },
-    ),
+    deleteClient: build.mutation<Client, string>({
+      query: (clientId) => ({
+        url: `/api/v1/clients/${clientId}`,
+        method: 'DELETE',
+      }),
+      transformResponse: (res: ApiSuccess<Client>) => res.data,
+      invalidatesTags: (_r, _e, clientId) => [
+        { type: 'Client', id: clientId },
+        { type: 'Client', id: 'LIST' },
+      ],
+    }),
   }),
 });
 

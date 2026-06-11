@@ -63,6 +63,8 @@ import type { List } from '@/types';
 const ALL_MONTHS = '__all_months__';
 const ALL_YEARS = '__all_years__';
 const ALL_TYPES = '__all_types__';
+const VISIBILITY_ACTIVE = 'active';
+const VISIBILITY_ARCHIVED = 'archived';
 
 const MONTH_OPTIONS = [
   { value: '1', label: 'January' },
@@ -111,6 +113,8 @@ export function ListsPage() {
     : (yearParam ?? String(currentYear()));
   const filterMonth = searchParams.get('month') ?? '';
   const filterNoticeType = searchParams.get('noticeType') ?? '';
+  const showArchivedOnly = searchParams.get('visibility') === VISIBILITY_ARCHIVED;
+
   useEffect(() => {
     if (!searchParams.has('year')) {
       const next = new URLSearchParams(searchParams);
@@ -189,6 +193,7 @@ export function ListsPage() {
       year: showAllYears ? undefined : Number(filterYear),
       month: filterMonth ? Number(filterMonth) : undefined,
       noticeType: filterNoticeType || undefined,
+      status: showArchivedOnly ? 'ARCHIVED' : undefined,
       page,
       limit: 20,
     },
@@ -223,6 +228,7 @@ export function ListsPage() {
     search ||
       filterMonth ||
       filterNoticeType ||
+      showArchivedOnly ||
       clientIdFilter ||
       showAllYears ||
       (!showAllYears && yearParam !== null && yearParam !== String(currentYear())),
@@ -452,7 +458,7 @@ export function ListsPage() {
     try {
       await deleteList(deleteTarget._id).unwrap();
       setDeleteTarget(null);
-      toast.success('List deleted permanently');
+      toast.success('List deleted');
     } catch (err) {
       setDeleteError(getApiErrorMessage(err, 'Failed to delete list.'));
     }
@@ -656,6 +662,24 @@ export function ListsPage() {
           </SelectContent>
         </Select>
 
+        <Select
+          value={showArchivedOnly ? VISIBILITY_ARCHIVED : VISIBILITY_ACTIVE}
+          onValueChange={(v) =>
+            patchFilters({
+              visibility: v === VISIBILITY_ACTIVE ? null : v,
+              ...(v === VISIBILITY_ARCHIVED ? { year: 'all' } : {}),
+            })
+          }
+        >
+          <SelectTrigger className="w-[130px]">
+            <SelectValue placeholder="Show" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={VISIBILITY_ACTIVE}>Active</SelectItem>
+            <SelectItem value={VISIBILITY_ARCHIVED}>Archived</SelectItem>
+          </SelectContent>
+        </Select>
+
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             <X className="mr-1 h-3.5 w-3.5" /> Clear
@@ -814,8 +838,22 @@ export function ListsPage() {
                     }
                     onTriggerSync={() => setSyncTarget(list)}
                     onEdit={() => openEdit(list)}
-                    onArchive={() => archiveList(list._id)}
-                    onUnarchive={() => unarchiveList(list._id)}
+                    onArchive={async () => {
+                      try {
+                        await archiveList(list._id).unwrap();
+                        toast.success('List archived — switch to Archived to view or restore');
+                      } catch (err) {
+                        toast.apiError(err, 'Failed to archive list');
+                      }
+                    }}
+                    onUnarchive={async () => {
+                      try {
+                        await unarchiveList(list._id).unwrap();
+                        toast.success('List restored');
+                      } catch (err) {
+                        toast.apiError(err, 'Failed to restore list');
+                      }
+                    }}
                     onDelete={() => {
                       setDeleteError('');
                       setDeleteTarget(list);
@@ -1012,7 +1050,7 @@ export function ListsPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDeleteList}
         title="Delete list"
-        description="This permanently deletes the list, its uploaded file, all articles, and tracking history. This cannot be undone."
+        description="This removes the list from view. Data remains in the system."
         entityName={deleteTarget?.name ?? ''}
         isLoading={deleting}
         error={deleteError}

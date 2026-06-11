@@ -92,7 +92,7 @@ export function ClientsPage() {
     try {
       await deleteClient(deleteTarget._id).unwrap();
       setDeleteTarget(null);
-      toast.success('Client deleted permanently');
+      toast.success('Client deleted');
     } catch (err) {
       setDeleteError(getApiErrorMessage(err, 'Failed to delete client.'));
     }
@@ -235,7 +235,7 @@ export function ClientsPage() {
                           variant="ghost"
                           size="sm"
                           className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                          title="Delete client permanently"
+                          title="Delete client"
                           onClick={() => {
                             setDeleteError('');
                             setDeleteTarget(client);
@@ -358,7 +358,7 @@ export function ClientsPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDeleteClient}
         title="Delete client"
-        description="This permanently deletes the client, all lists, articles, customer users, and sync data. This cannot be undone."
+        description="This deactivates the client and removes them from active use. Data remains in the system."
         entityName={deleteTarget?.name ?? ''}
         isLoading={deleting}
         error={deleteError}
