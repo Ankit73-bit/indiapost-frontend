@@ -116,7 +116,6 @@ export interface Client {
   _id: string;
   name: string;
   slug: string;
-  contactEmail: string;
   settings: ClientSettings;
   isActive: boolean;
   createdAt: string;
@@ -126,13 +125,11 @@ export interface Client {
 export interface CreateClientBody {
   name: string;
   slug: string;
-  contactEmail: string;
   settings?: Partial<ClientSettings>;
 }
 
 export interface UpdateClientBody {
   name?: string;
-  contactEmail?: string;
   settings?: Partial<ClientSettings>;
 }
 

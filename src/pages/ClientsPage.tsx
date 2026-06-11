@@ -37,7 +37,6 @@ const schema = z.object({
     .string()
     .min(1, 'Slug is required')
     .regex(/^[a-z0-9-]+$/, 'Lowercase letters, numbers, hyphens only'),
-  contactEmail: z.email('Enter a valid email'),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -71,7 +70,7 @@ export function ClientsPage() {
   function openCreate() {
     setEditing(null);
     setSubmitError('');
-    reset({ name: '', slug: '', contactEmail: '' });
+    reset({ name: '', slug: '' });
     setDialogOpen(true);
   }
 
@@ -81,7 +80,6 @@ export function ClientsPage() {
     reset({
       name: client.name,
       slug: client.slug,
-      contactEmail: client.contactEmail,
     });
     setDialogOpen(true);
   }
@@ -139,9 +137,6 @@ export function ClientsPage() {
                 Slug
               </th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                Email
-              </th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
                 Status
               </th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
@@ -156,7 +151,7 @@ export function ClientsPage() {
             {isLoading && (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={5}
                   className="px-4 py-8 text-center text-muted-foreground"
                 >
                   <Loader2 className="mx-auto h-5 w-5 animate-spin" />
@@ -166,7 +161,7 @@ export function ClientsPage() {
             {!isLoading && data?.data.length === 0 && (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={5}
                   className="px-4 py-8 text-center text-muted-foreground"
                 >
                   No clients yet. Create one to get started.
@@ -182,9 +177,6 @@ export function ClientsPage() {
                 <td className="px-4 py-3 font-medium">{client.name}</td>
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                   {client.slug}
-                </td>
-                <td className="px-4 py-3 text-muted-foreground">
-                  {client.contactEmail}
                 </td>
                 <td className="px-4 py-3">
                   <span
@@ -314,20 +306,6 @@ export function ClientsPage() {
                 </p>
               )}
             </div>
-            <div className="space-y-1.5">
-              <Label>Contact Email</Label>
-              <Input
-                type="email"
-                placeholder="ops@acmebank.com"
-                {...register('contactEmail')}
-              />
-              {errors.contactEmail && (
-                <p className="text-xs text-destructive">
-                  {errors.contactEmail.message}
-                </p>
-              )}
-            </div>
-
             {submitError && (
               <div className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 {submitError}
