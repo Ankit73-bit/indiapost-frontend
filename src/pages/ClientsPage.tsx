@@ -26,6 +26,7 @@ import {
   useDeleteClientMutation,
 } from '@/store/api/clientsApi';
 import { toast } from '@/lib/toast';
+import { cn } from '@/lib/utils';
 import { toSlug, formatDate, getApiErrorMessage } from '@/lib/helpers';
 import type { Client } from '@/types';
 
@@ -174,7 +175,10 @@ export function ClientsPage() {
             {data?.data.map((client) => (
               <tr
                 key={client._id}
-                className="border-b border-border/50 last:border-0 hover:bg-muted/20 cursor-pointer"
+                className={cn(
+                  'border-b border-border/50 last:border-0 hover:bg-muted/20 cursor-pointer',
+                  !client.isActive && 'bg-muted/40 text-muted-foreground opacity-70',
+                )}
                 onClick={() => navigate(`/lists?clientId=${client._id}`)}
               >
                 <td className="px-4 py-3 font-medium">{client.name}</td>

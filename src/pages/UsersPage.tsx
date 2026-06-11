@@ -34,6 +34,7 @@ import {
 } from '@/store/api/usersApi';
 import { useListClientsQuery } from '@/store/api/clientsApi';
 import { toast } from '@/lib/toast';
+import { cn } from '@/lib/utils';
 import { formatDate, getApiErrorMessage } from '@/lib/helpers';
 import { useAppSelector } from '@/store';
 import type { UserRole, PublicUser } from '@/types';
@@ -298,18 +299,25 @@ function UserRow({
 
   return (
     <>
-      <tr className="border-b border-border/50 last:border-0">
+      <tr
+        className={cn(
+          'border-b border-border/50 last:border-0',
+          !user.isActive && 'bg-muted/40 text-muted-foreground opacity-70',
+        )}
+      >
         <td className="px-4 py-3">
           <p className="font-medium">{user.name ?? '—'}</p>
           <p className="text-xs text-muted-foreground">{user.email}</p>
         </td>
         <td className="px-4 py-3">
           <span
-            className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium capitalize ${
+            className={cn(
+              'inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium capitalize',
               user.role === 'admin'
                 ? 'bg-purple-100 text-purple-700 border-purple-200'
-                : 'bg-blue-100 text-blue-700 border-blue-200'
-            }`}
+                : 'bg-blue-100 text-blue-700 border-blue-200',
+              !user.isActive && 'opacity-80',
+            )}
           >
             {user.role}
           </span>
