@@ -325,6 +325,8 @@ export interface Article {
   deliveredAt?: string;
   bookingDetails?: BookingDetails;
   latestEvent?: LatestEvent;
+  /** Admin API only — India Post no longer returns tracking for this article */
+  indiaPostTrackingExpired?: boolean;
   importRowNumber?: number;
   createdAt: string;
   updatedAt: string;
@@ -356,6 +358,8 @@ export interface ListArticlesQuery {
   status?: NormalizedStatus;
   search?: string;
   syncFailed?: boolean;
+  /** Admin only */
+  trackingExpired?: boolean;
   page?: number;
   limit?: number;
 }
@@ -415,6 +419,20 @@ export interface FailedArticle {
   isResolved: boolean;
   updatedAt: string;
   createdAt: string;
+}
+
+export interface TrackingExpiredArticle {
+  _id: string;
+  articleId: string;
+  articleNumber: string;
+  clientId: string;
+  listId: string;
+  listName?: string;
+  dispatchDate?: string;
+  bookedOn?: string;
+  normalizedStatus: NormalizedStatus;
+  lastSyncedAt?: string;
+  updatedAt: string;
 }
 
 export type SyncJobType = 'MANUAL' | 'SCHEDULED' | 'RETRY' | 'PARTIAL';

@@ -22,6 +22,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { ListTrackingRetentionBadge } from '@/components/shared/ListTrackingRetentionBadge';
 import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
 import { ClientFilterSelect } from '@/components/shared/ClientFilterSelect';
@@ -828,7 +829,10 @@ export function ListsPage() {
                     {list.totalArticles.toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
-                    {formatDate(list.dispatchDate)}
+                    <div>{formatDate(list.dispatchDate)}</div>
+                    {isAdmin && (
+                      <ListTrackingRetentionBadge dispatchDate={list.dispatchDate} />
+                    )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">
                     {list.uploadedFile

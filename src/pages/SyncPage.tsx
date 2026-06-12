@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { TrackingRetentionAdminNote } from '@/components/shared/TrackingRetentionAdminNote';
 import { SearchableListSelect } from '@/components/shared/SearchableListSelect';
 import { SyncJobStatusBadge } from '@/components/shared/StatusBadge';
 import { Pagination } from '@/components/shared/Pagination';
@@ -31,9 +32,10 @@ import {
   useTriggerSyncMutation,
   useListSyncJobsQuery,
   useListFailedArticlesQuery,
+  useListTrackingExpiredArticlesQuery,
   useRetryFailedArticleMutation,
 } from '@/store/api/syncApi';
-import { formatRelative, getApiErrorMessage } from '@/lib/helpers';
+import { formatDate, formatRelative, getApiErrorMessage } from '@/lib/helpers';
 import { toast } from '@/lib/toast';
 import type { SyncJob, SyncJobStatus, SyncJobType } from '@/types';
 
@@ -79,7 +81,9 @@ export function SyncPage() {
   const filterJobType = searchParams.get('type') ?? '';
   const filterFromDate = searchParams.get('fromDate') ?? '';
   const filterToDate = searchParams.get('toDate') ?? '';
-  const activeTab = searchParams.get('tab') === 'failed' ? 'failed' : 'jobs';
+  const tabParam = searchParams.get('tab');
+  const activeTab =
+    tabParam === 'failed' ? 'failed' : tabParam === 'expired' ? 'expired' : 'jobs';
 
   const jobsFilterKey = [
     filterClientId,
@@ -90,16 +94,21 @@ export function SyncPage() {
     filterToDate,
   ].join('|');
   const failedFilterKey = [filterClientId, filterListId].join('|');
+  const expiredFilterKey = failedFilterKey;
 
   const [pageByKey, setPageByKey] = useState<Record<string, number>>({});
   const jobsPage = pageByKey[`jobs|${jobsFilterKey}`] ?? 1;
   const failedPage = pageByKey[`failed|${failedFilterKey}`] ?? 1;
+  const expiredPage = pageByKey[`expired|${expiredFilterKey}`] ?? 1;
 
   const setJobsPage = (page: number) => {
     setPageByKey((prev) => ({ ...prev, [`jobs|${jobsFilterKey}`]: page }));
   };
   const setFailedPage = (page: number) => {
     setPageByKey((prev) => ({ ...prev, [`failed|${failedFilterKey}`]: page }));
+  };
+  const setExpiredPage = (page: number) => {
+    setPageByKey((prev) => ({ ...prev, [`expired|${expiredFilterKey}`]: page }));
   };
 
   const [triggerDialogOpen, setTriggerDialogOpen] = useState(false);
@@ -163,6 +172,14 @@ export function SyncPage() {
       },
       { pollingInterval: shouldPollJobs ? 3000 : 0 },
     );
+
+  const { data: expiredData, isLoading: expiredLoading } =
+    useListTrackingExpiredArticlesQuery({
+      page: expiredPage,
+      limit: 20,
+      clientId: filterClientId || undefined,
+      listId: filterListId || undefined,
+    });
 
   const listNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -370,6 +387,8 @@ export function SyncPage() {
         )}
       </div>
 
+      <TrackingRetentionAdminNote />
+
       {activeJobs.length > 0 && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
           <p className="font-medium">
@@ -392,6 +411,14 @@ export function SyncPage() {
             {failedData?.meta && failedData.meta.total > 0 && (
               <span className="ml-1.5 rounded-full bg-destructive/15 px-1.5 py-0.5 text-xs text-destructive">
                 {failedData.meta.total}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="expired">
+            Tracking Expired
+            {expiredData?.meta && expiredData.meta.total > 0 && (
+              <span className="ml-1.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-xs text-amber-800 dark:text-amber-200">
+                {expiredData.meta.total}
               </span>
             )}
           </TabsTrigger>
@@ -587,6 +614,85 @@ export function SyncPage() {
                 <Pagination
                   meta={failedData.meta}
                   onPageChange={setFailedPage}
+                />
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="expired">
+          <p className="mb-3 text-sm text-muted-foreground">
+            Articles past India Post&apos;s ~60-day tracking window. Local
+            tracking events are kept; further syncs are skipped automatically.
+          </p>
+          <div className="rounded-lg border border-border bg-card">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                    Article #
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                    List
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                    Dispatch
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                    Status
+                  </th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                    Last Synced
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {expiredLoading && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center">
+                      <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
+                    </td>
+                  </tr>
+                )}
+                {!expiredLoading && expiredData?.data.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-4 py-8 text-center text-muted-foreground"
+                    >
+                      No tracking-expired articles.
+                    </td>
+                  </tr>
+                )}
+                {expiredData?.data.map((row) => (
+                  <tr
+                    key={row._id}
+                    className="border-b border-border/50 last:border-0"
+                  >
+                    <td className="px-4 py-3 font-mono text-xs">
+                      {row.articleNumber}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs max-w-[180px] truncate">
+                      {row.listName ?? row.listId.slice(-6)}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                      {formatDate(row.dispatchDate)}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {row.normalizedStatus}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground text-xs whitespace-nowrap">
+                      {formatDate(row.lastSyncedAt)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {expiredData?.meta && expiredData.meta.totalPages > 1 && (
+              <div className="px-4 pb-4">
+                <Pagination
+                  meta={expiredData.meta}
+                  onPageChange={setExpiredPage}
                 />
               </div>
             )}

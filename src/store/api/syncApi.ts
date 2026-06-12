@@ -3,6 +3,7 @@ import type {
   ApiSuccess,
   SyncJob,
   FailedArticle,
+  TrackingExpiredArticle,
   TriggerSyncBody,
   TriggerSyncResponse,
   ListSyncJobsQuery,
@@ -83,6 +84,26 @@ export const syncApi = baseApi.injectEndpoints({
         { type: 'SyncJob', id: 'LIST' },
       ],
     }),
+
+    listTrackingExpiredArticles: build.query<
+      { data: TrackingExpiredArticle[]; meta?: PaginationMeta },
+      {
+        clientId?: string;
+        listId?: string;
+        page?: number;
+        limit?: number;
+      } | void
+    >({
+      query: (params) => ({
+        url: '/api/v1/sync/tracking-expired',
+        params: params ?? {},
+      }),
+      transformResponse: (res: ApiSuccess<TrackingExpiredArticle[]>) => ({
+        data: res.data,
+        meta: res.meta,
+      }),
+      providesTags: [{ type: 'FailedArticle', id: 'TRACKING_EXPIRED' }],
+    }),
   }),
 });
 
@@ -93,4 +114,5 @@ export const {
   useGetListSyncHistoryQuery,
   useListFailedArticlesQuery,
   useRetryFailedArticleMutation,
+  useListTrackingExpiredArticlesQuery,
 } = syncApi;
