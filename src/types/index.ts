@@ -206,9 +206,11 @@ export type ListStats = Partial<Record<NormalizedStatus, number>>;
 
 export interface UploadedFile {
   originalName: string;
-  s3Key: string;
+  contentType?: string;
   sizeBytes: number;
   uploadedAt: string;
+  /** Present only on lists imported before DB-backed file storage */
+  s3Key?: string;
 }
 
 export interface ImportResult {
