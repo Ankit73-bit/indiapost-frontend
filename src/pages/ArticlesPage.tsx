@@ -17,6 +17,7 @@ import {
   FileText,
   Eye,
   Download,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,13 +46,15 @@ import {
 import { Pagination } from '@/components/shared/Pagination';
 import {
   useListArticlesQuery,
+  useLazyListSyncableArticleIdsQuery,
   useGetArticleEventsQuery,
 } from '@/store/api/articlesApi';
 import { listsApi, useGetListQuery, useListListsQuery } from '@/store/api/listsApi';
 import { SearchableListSelect } from '@/components/shared/SearchableListSelect';
 import { useListClientsQuery } from '@/store/api/clientsApi';
 import { useAppSelector } from '@/store';
-import { ALL_STATUSES } from '@/types';
+import { ALL_STATUSES, TERMINAL_STATUSES } from '@/types';
+import { useTriggerArticlesSyncMutation } from '@/store/api/syncApi';
 import { formatDate, formatDateTime, formatRelative, STATUS_CONFIG, getApiErrorMessage } from '@/lib/helpers';
 import { downloadPdfFile, viewPdfInNewTab } from '@/lib/pdfFiles';
 import { toast } from '@/lib/toast';
@@ -758,6 +761,10 @@ function buildSearchPlaceholder(
     : `Search ${last}…`;
 }
 
+function isArticleSyncSelectable(article: Article): boolean {
+  return !article.isTerminal && !article.indiaPostTrackingExpired;
+}
+
 // ─── List articles view (remounts when client/list changes) ───────────────────
 
 function ArticlesListView({
@@ -776,11 +783,17 @@ function ArticlesListView({
     NormalizedStatus | undefined
   >();
   const [syncFailedOnly, setSyncFailedOnly] = useState(false);
+  const [nonTerminalOnly, setNonTerminalOnly] = useState(false);
+  const [selectedSyncIds, setSelectedSyncIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [pdfsOpen, setPdfsOpen] = useState(
     () => new URLSearchParams(window.location.search).get('pdfs') === '1',
   );
   const [exporting, setExporting] = useState(false);
+  const [allListSyncableSelected, setAllListSyncableSelected] = useState(false);
+  const [selectingAllSyncable, setSelectingAllSyncable] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setSearch(searchInput.trim()), 300);
@@ -794,6 +807,10 @@ function ArticlesListView({
     pollingInterval: cachedListMeta?.status === 'IMPORTING' ? 3000 : 0,
   });
 
+  const [triggerArticlesSync, { isLoading: syncingSelected }] =
+    useTriggerArticlesSyncMutation();
+  const [fetchSyncableIds] = useLazyListSyncableArticleIdsQuery();
+
   const { data, isLoading, isError, isFetching, refetch } =
     useListArticlesQuery(
       {
@@ -802,14 +819,37 @@ function ArticlesListView({
         status: statusFilter,
         search: search || undefined,
         syncFailed: syncFailedOnly || undefined,
+        nonTerminal: nonTerminalOnly || undefined,
         page,
         limit: 25,
       },
       { skip: false },
     );
 
+  const articles = data?.data ?? [];
+  const syncableOnPage = articles.filter(isArticleSyncSelectable);
+  const allSyncablePageSelected =
+    syncableOnPage.length > 0 &&
+    syncableOnPage.every((a) => selectedSyncIds.has(a._id));
+
+  const listNonTerminalCount = useMemo(() => {
+    if (!listMeta) return 0;
+    const terminal = TERMINAL_STATUSES.reduce(
+      (sum, status) => sum + (listMeta.stats?.[status] ?? 0),
+      0,
+    );
+    return Math.max(0, listMeta.totalArticles - terminal);
+  }, [listMeta]);
+
+  const isListSyncing = listMeta?.status === 'SYNCING';
+
+  useEffect(() => {
+    setSelectedSyncIds(new Set());
+    setAllListSyncableSelected(false);
+  }, [clientId, listId, search, statusFilter, syncFailedOnly, nonTerminalOnly]);
+
   const hasActiveFilters = Boolean(
-    searchInput || statusFilter || syncFailedOnly,
+    searchInput || statusFilter || syncFailedOnly || nonTerminalOnly,
   );
 
   function clearFilters() {
@@ -817,7 +857,91 @@ function ArticlesListView({
     setSearch('');
     setStatusFilter(undefined);
     setSyncFailedOnly(false);
+    setNonTerminalOnly(false);
     setPage(1);
+  }
+
+  function toggleSyncSelection(articleId: string) {
+    setAllListSyncableSelected(false);
+    setSelectedSyncIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(articleId)) next.delete(articleId);
+      else next.add(articleId);
+      return next;
+    });
+  }
+
+  function toggleAllSyncableOnPage() {
+    setAllListSyncableSelected(false);
+    setSelectedSyncIds((prev) => {
+      const next = new Set(prev);
+      if (allSyncablePageSelected) {
+        for (const a of syncableOnPage) next.delete(a._id);
+      } else {
+        for (const a of syncableOnPage) next.add(a._id);
+      }
+      return next;
+    });
+  }
+
+  const headerCheckboxChecked = nonTerminalOnly
+    ? allListSyncableSelected
+    : allSyncablePageSelected;
+
+  async function handleToggleAllSyncable() {
+    if (isListSyncing || selectingAllSyncable) return;
+
+    if (nonTerminalOnly) {
+      if (allListSyncableSelected) {
+        setSelectedSyncIds(new Set());
+        setAllListSyncableSelected(false);
+        return;
+      }
+
+      setSelectingAllSyncable(true);
+      try {
+        const result = await fetchSyncableIds({
+          clientId,
+          listId,
+          status: statusFilter,
+          search: search || undefined,
+          syncFailed: syncFailedOnly || undefined,
+          nonTerminal: true,
+        }).unwrap();
+
+        setSelectedSyncIds(new Set(result.articleIds));
+        setAllListSyncableSelected(result.total > 0);
+        if (result.total === 0) {
+          toast.info('No syncable non-terminal articles in this list');
+        }
+      } catch {
+        toast.error('Failed to select all articles');
+      } finally {
+        setSelectingAllSyncable(false);
+      }
+      return;
+    }
+
+    toggleAllSyncableOnPage();
+  }
+
+  async function handleSyncSelected() {
+    const articleIds = [...selectedSyncIds];
+    if (articleIds.length === 0) return;
+    try {
+      const result = await triggerArticlesSync({
+        clientId,
+        listId,
+        articleIds,
+      }).unwrap();
+      toast.success(
+        `Sync started for ${result.enqueued.toLocaleString()} article${result.enqueued !== 1 ? 's' : ''}`,
+      );
+      setSelectedSyncIds(new Set());
+      setAllListSyncableSelected(false);
+    } catch (err) {
+      toast.apiError(err, 'Failed to start sync for selected articles');
+    }
   }
 
   const hasLoanAccount = data?.data.some((a) => a.attributes?.loan_account_no);
@@ -940,6 +1064,42 @@ function ArticlesListView({
           Sync failed
         </Button>
 
+        <Button
+          variant={nonTerminalOnly ? 'default' : 'outline'}
+          size="sm"
+          className="gap-1.5 shrink-0"
+          onClick={() => {
+            setNonTerminalOnly((v) => !v);
+            setPage(1);
+          }}
+        >
+          <Truck className="h-3.5 w-3.5" />
+          Non-terminal
+          {listNonTerminalCount > 0 && (
+            <span className="tabular-nums text-xs opacity-80">
+              ({nonTerminalOnly && data?.meta
+                ? data.meta.total.toLocaleString()
+                : listNonTerminalCount.toLocaleString()})
+            </span>
+          )}
+        </Button>
+
+        {selectedSyncIds.size > 0 && (
+          <Button
+            size="sm"
+            className="gap-1.5 shrink-0"
+            disabled={syncingSelected || isListSyncing}
+            onClick={handleSyncSelected}
+          >
+            {syncingSelected ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="h-3.5 w-3.5" />
+            )}
+            Sync selected ({selectedSyncIds.size})
+          </Button>
+        )}
+
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>
             <X className="mr-1 h-3.5 w-3.5" /> Clear
@@ -994,6 +1154,28 @@ function ArticlesListView({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40">
+                <th className="w-10 px-3 py-2.5">
+                  {selectingAllSyncable ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                  ) : (
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 rounded border-border"
+                      checked={headerCheckboxChecked}
+                      onChange={() => void handleToggleAllSyncable()}
+                      disabled={
+                        (nonTerminalOnly
+                          ? listNonTerminalCount === 0
+                          : syncableOnPage.length === 0) || isListSyncing
+                      }
+                      aria-label={
+                        nonTerminalOnly
+                          ? 'Select all syncable non-terminal articles in this list'
+                          : 'Select all syncable articles on this page'
+                      }
+                    />
+                  )}
+                </th>
                 <th className="px-4 py-2.5 text-left font-medium text-muted-foreground whitespace-nowrap">
                   Article #
                 </th>
@@ -1028,17 +1210,17 @@ function ArticlesListView({
               {isLoading && (
                 <tr>
                   <td
-                    colSpan={6 + extraCols}
+                    colSpan={7 + extraCols}
                     className="px-4 py-12 text-center"
                   >
                     <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
                   </td>
                 </tr>
               )}
-              {!isLoading && data?.data.length === 0 && (
+              {!isLoading && articles.length === 0 && (
                 <tr>
                   <td
-                    colSpan={6 + extraCols}
+                    colSpan={7 + extraCols}
                     className="px-4 py-12 text-center"
                   >
                     {isImporting && !hasActiveFilters ? (
@@ -1094,7 +1276,9 @@ function ArticlesListView({
                   </td>
                 </tr>
               )}
-              {data?.data.map((article) => (
+              {articles.map((article) => {
+                const syncSelectable = isArticleSyncSelectable(article);
+                return (
                 <tr
                   key={article._id}
                   className={`border-b border-border/50 last:border-0 cursor-pointer transition-colors hover:bg-muted/20 ${
@@ -1102,6 +1286,23 @@ function ArticlesListView({
                   }`}
                   onClick={() => setSelectedArticle(article)}
                 >
+                  <td
+                    className="px-3 py-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 rounded border-border disabled:cursor-not-allowed disabled:opacity-40"
+                      checked={selectedSyncIds.has(article._id)}
+                      disabled={!syncSelectable || isListSyncing}
+                      onChange={() => toggleSyncSelection(article._id)}
+                      aria-label={
+                        syncSelectable
+                          ? `Select ${article.articleNumber} for sync`
+                          : `${article.articleNumber} cannot be synced`
+                      }
+                    />
+                  </td>
                   <td className="px-4 py-3 font-mono text-xs whitespace-nowrap">
                     <span className="inline-flex items-center gap-1.5">
                       {article.articleNumber}
@@ -1169,7 +1370,8 @@ function ArticlesListView({
                     {article.syncAttempts}
                   </td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         )}

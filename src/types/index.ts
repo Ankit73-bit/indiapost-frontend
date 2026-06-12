@@ -360,6 +360,7 @@ export interface ListArticlesQuery {
   status?: NormalizedStatus;
   search?: string;
   syncFailed?: boolean;
+  nonTerminal?: boolean;
   /** Admin only */
   trackingExpired?: boolean;
   page?: number;
@@ -408,6 +409,22 @@ export interface TriggerSyncBody {
 export interface TriggerSyncResponse {
   syncJobId: string | null;
   message: string;
+}
+
+export interface TriggerArticlesBody {
+  clientId: string;
+  listId: string;
+  articleIds: string[];
+}
+
+export interface TriggerArticlesResponse {
+  syncJobId: string;
+  enqueued: number;
+}
+
+export interface BulkRetryResponse {
+  enqueued: number;
+  syncJobIds: string[];
 }
 
 export interface FailedArticle {

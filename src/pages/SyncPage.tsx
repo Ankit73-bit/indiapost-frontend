@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { RefreshCw, RotateCcw, Loader2, X } from 'lucide-react';
+import { RefreshCw, RotateCcw, Loader2, X, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -35,6 +35,7 @@ import {
   useListFailedArticlesQuery,
   useListTrackingExpiredArticlesQuery,
   useRetryFailedArticleMutation,
+  useBulkRetryFailedArticlesMutation,
 } from '@/store/api/syncApi';
 import { formatDate, formatRelative, getApiErrorMessage } from '@/lib/helpers';
 import { toast } from '@/lib/toast';
@@ -98,7 +99,18 @@ export function SyncPage() {
     filterFromDate,
     filterToDate,
   ].join('|');
-  const failedFilterKey = [filterClientId, filterListId].join('|');
+  const [failedSearchInput, setFailedSearchInput] = useState('');
+  const [failedSearch, setFailedSearch] = useState('');
+  const [selectedFailedIds, setSelectedFailedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  useEffect(() => {
+    const timer = setTimeout(() => setFailedSearch(failedSearchInput.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [failedSearchInput]);
+
+  const failedFilterKey = [filterClientId, filterListId, failedSearch].join('|');
   const expiredFilterKey = failedFilterKey;
 
   const [pageByKey, setPageByKey] = useState<Record<string, number>>({});
@@ -177,9 +189,14 @@ export function SyncPage() {
         limit: 20,
         clientId: filterClientId || undefined,
         listId: filterListId || undefined,
+        search: failedSearch || undefined,
       },
       { pollingInterval: shouldPollJobs ? 3000 : 0 },
     );
+
+  useEffect(() => {
+    setSelectedFailedIds(new Set());
+  }, [failedFilterKey, failedPage]);
 
   const { data: expiredData, isLoading: expiredLoading } =
     useListTrackingExpiredArticlesQuery({
@@ -219,6 +236,13 @@ export function SyncPage() {
 
   const [triggerSync, { isLoading: triggering }] = useTriggerSyncMutation();
   const [retryArticle] = useRetryFailedArticleMutation();
+  const [bulkRetry, { isLoading: bulkRetrying }] =
+    useBulkRetryFailedArticlesMutation();
+
+  const failedRows = failedData?.data ?? [];
+  const allFailedPageSelected =
+    failedRows.length > 0 &&
+    failedRows.every((fa) => selectedFailedIds.has(fa.articleId));
 
   const hasJobFilters = Boolean(
     filterClientId ||
@@ -274,6 +298,43 @@ export function SyncPage() {
       window.setTimeout(() => setSyncPollForced(false), 12000);
     } catch (err) {
       toast.apiError(err, 'Failed to retry article');
+    }
+  }
+
+  function toggleFailedSelection(articleId: string) {
+    setSelectedFailedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(articleId)) next.delete(articleId);
+      else next.add(articleId);
+      return next;
+    });
+  }
+
+  function toggleAllFailedOnPage() {
+    setSelectedFailedIds((prev) => {
+      const next = new Set(prev);
+      if (allFailedPageSelected) {
+        for (const fa of failedRows) next.delete(fa.articleId);
+      } else {
+        for (const fa of failedRows) next.add(fa.articleId);
+      }
+      return next;
+    });
+  }
+
+  async function handleBulkRetry() {
+    const articleIds = [...selectedFailedIds];
+    if (articleIds.length === 0) return;
+    try {
+      const result = await bulkRetry(articleIds).unwrap();
+      toast.success(
+        `Retry enqueued for ${result.enqueued.toLocaleString()} article${result.enqueued !== 1 ? 's' : ''}`,
+      );
+      setSelectedFailedIds(new Set());
+      setSyncPollForced(true);
+      window.setTimeout(() => setSyncPollForced(false), 12000);
+    } catch (err) {
+      toast.apiError(err, 'Failed to retry selected articles');
     }
   }
 
@@ -550,14 +611,59 @@ export function SyncPage() {
 
         <TabsContent value="failed">
           <p className="mb-3 text-sm text-muted-foreground">
-            Articles where the last sync attempt failed. Trigger Sync on the
-            list retries all of these automatically — per-article Retry is
-            optional.
+            Articles where the last sync attempt failed. Select rows and retry in
+            bulk, or use Trigger Sync on the list to retry all non-terminal
+            articles.
           </p>
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[200px] max-w-sm flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search article # or error…"
+                className="pl-8"
+                value={failedSearchInput}
+                onChange={(e) => {
+                  setFailedSearchInput(e.target.value);
+                  setFailedPage(1);
+                }}
+              />
+            </div>
+            {selectedFailedIds.size > 0 && (
+              <Button
+                size="sm"
+                className="gap-1.5"
+                disabled={bulkRetrying}
+                onClick={handleBulkRetry}
+              >
+                {bulkRetrying ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RotateCcw className="h-3.5 w-3.5" />
+                )}
+                Retry selected ({selectedFailedIds.size})
+              </Button>
+            )}
+            {failedData?.meta && (
+              <span className="ml-auto text-xs text-muted-foreground">
+                {failedData.meta.total.toLocaleString()} failed article
+                {failedData.meta.total !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
           <div className="rounded-lg border border-border bg-card">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
+                  <th className="w-10 px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 rounded border-border"
+                      checked={allFailedPageSelected}
+                      onChange={toggleAllFailedOnPage}
+                      disabled={failedRows.length === 0}
+                      aria-label="Select all failed articles on this page"
+                    />
+                  </th>
                   <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
                     Article #
                   </th>
@@ -578,26 +684,37 @@ export function SyncPage() {
               <tbody>
                 {failedLoading && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center">
+                    <td colSpan={6} className="px-4 py-8 text-center">
                       <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
                     </td>
                   </tr>
                 )}
-                {!failedLoading && failedData?.data.length === 0 && (
+                {!failedLoading && failedRows.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-4 py-8 text-center text-muted-foreground"
                     >
-                      No failed articles.
+                      {failedSearch
+                        ? 'No failed articles match your search.'
+                        : 'No failed articles.'}
                     </td>
                   </tr>
                 )}
-                {failedData?.data.map((fa) => (
+                {failedRows.map((fa) => (
                   <tr
                     key={fa._id}
                     className="border-b border-border/50 last:border-0"
                   >
+                    <td className="px-3 py-3">
+                      <input
+                        type="checkbox"
+                        className="h-3.5 w-3.5 rounded border-border"
+                        checked={selectedFailedIds.has(fa.articleId)}
+                        onChange={() => toggleFailedSelection(fa.articleId)}
+                        aria-label={`Select ${fa.articleNumber}`}
+                      />
+                    </td>
                     <td className="px-4 py-3 text-xs">{fa.articleNumber}</td>
                     <td className="px-4 py-3 text-muted-foreground max-w-sm truncate">
                       {fa.reason}

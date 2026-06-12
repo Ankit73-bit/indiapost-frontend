@@ -6,6 +6,9 @@ import type {
   TrackingExpiredArticle,
   TriggerSyncBody,
   TriggerSyncResponse,
+  TriggerArticlesBody,
+  TriggerArticlesResponse,
+  BulkRetryResponse,
   ListSyncJobsQuery,
   PaginationMeta,
 } from '@/types';
@@ -18,6 +21,24 @@ export const syncApi = baseApi.injectEndpoints({
       invalidatesTags: [
         { type: 'SyncJob', id: 'LIST' },
         { type: 'List', id: 'LIST' },
+        { type: 'FailedArticle', id: 'LIST' },
+      ],
+    }),
+
+    triggerArticlesSync: build.mutation<
+      TriggerArticlesResponse,
+      TriggerArticlesBody
+    >({
+      query: (body) => ({
+        url: '/api/v1/sync/trigger-articles',
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (res: ApiSuccess<TriggerArticlesResponse>) => res.data,
+      invalidatesTags: [
+        { type: 'SyncJob', id: 'LIST' },
+        { type: 'List', id: 'LIST' },
+        { type: 'Article', id: 'LIST' },
         { type: 'FailedArticle', id: 'LIST' },
       ],
     }),
@@ -62,6 +83,7 @@ export const syncApi = baseApi.injectEndpoints({
       {
         clientId?: string;
         listId?: string;
+        search?: string;
         page?: number;
         limit?: number;
       } | void
@@ -82,6 +104,21 @@ export const syncApi = baseApi.injectEndpoints({
       invalidatesTags: [
         { type: 'FailedArticle', id: 'LIST' },
         { type: 'SyncJob', id: 'LIST' },
+      ],
+    }),
+
+    bulkRetryFailedArticles: build.mutation<BulkRetryResponse, string[]>({
+      query: (articleIds) => ({
+        url: '/api/v1/sync/failed/retry-bulk',
+        method: 'POST',
+        body: { articleIds },
+      }),
+      transformResponse: (res: ApiSuccess<BulkRetryResponse>) => res.data,
+      invalidatesTags: [
+        { type: 'FailedArticle', id: 'LIST' },
+        { type: 'SyncJob', id: 'LIST' },
+        { type: 'List', id: 'LIST' },
+        { type: 'Article', id: 'LIST' },
       ],
     }),
 
@@ -109,10 +146,12 @@ export const syncApi = baseApi.injectEndpoints({
 
 export const {
   useTriggerSyncMutation,
+  useTriggerArticlesSyncMutation,
   useListSyncJobsQuery,
   useGetSyncJobQuery,
   useGetListSyncHistoryQuery,
   useListFailedArticlesQuery,
   useRetryFailedArticleMutation,
+  useBulkRetryFailedArticlesMutation,
   useListTrackingExpiredArticlesQuery,
 } = syncApi;

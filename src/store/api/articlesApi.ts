@@ -56,6 +56,19 @@ export const articlesApi = baseApi.injectEndpoints({
       }),
     }),
 
+    listSyncableArticleIds: build.query<
+      { articleIds: string[]; total: number },
+      Omit<ListArticlesQuery, 'page' | 'limit'> & { listId: string }
+    >({
+      query: (params) => ({
+        url: '/api/v1/articles/syncable-ids',
+        params,
+      }),
+      transformResponse: (
+        res: ApiSuccess<{ articleIds: string[]; total: number }>,
+      ) => res.data,
+    }),
+
     getArticleStats: build.query<ArticleStats, string | undefined>({
       query: (clientId) => ({
         url: '/api/v1/articles/stats',
@@ -71,6 +84,7 @@ export const articlesApi = baseApi.injectEndpoints({
 
 export const {
   useListArticlesQuery,
+  useLazyListSyncableArticleIdsQuery,
   useGetArticleQuery,
   useGetArticleEventsQuery,
   useGetArticleStatsQuery,
