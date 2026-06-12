@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { TrackingRetentionAdminNote } from '@/components/shared/TrackingRetentionAdminNote';
+// import { TrackingRetentionAdminNote } from '@/components/shared/TrackingRetentionAdminNote';
 import { SearchableListSelect } from '@/components/shared/SearchableListSelect';
 import { SyncJobStatusBadge } from '@/components/shared/StatusBadge';
 import { Pagination } from '@/components/shared/Pagination';
@@ -83,7 +83,11 @@ export function SyncPage() {
   const filterToDate = searchParams.get('toDate') ?? '';
   const tabParam = searchParams.get('tab');
   const activeTab =
-    tabParam === 'failed' ? 'failed' : tabParam === 'expired' ? 'expired' : 'jobs';
+    tabParam === 'failed'
+      ? 'failed'
+      : tabParam === 'expired'
+        ? 'expired'
+        : 'jobs';
 
   const jobsFilterKey = [
     filterClientId,
@@ -108,7 +112,10 @@ export function SyncPage() {
     setPageByKey((prev) => ({ ...prev, [`failed|${failedFilterKey}`]: page }));
   };
   const setExpiredPage = (page: number) => {
-    setPageByKey((prev) => ({ ...prev, [`expired|${expiredFilterKey}`]: page }));
+    setPageByKey((prev) => ({
+      ...prev,
+      [`expired|${expiredFilterKey}`]: page,
+    }));
   };
 
   const [triggerDialogOpen, setTriggerDialogOpen] = useState(false);
@@ -387,7 +394,7 @@ export function SyncPage() {
         )}
       </div>
 
-      <TrackingRetentionAdminNote />
+      {/* <TrackingRetentionAdminNote /> */}
 
       {activeJobs.length > 0 && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
