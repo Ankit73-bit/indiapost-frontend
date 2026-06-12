@@ -1,6 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Plus, Loader2, Search, X } from 'lucide-react';
+import {
+  Plus,
+  Loader2,
+  Search,
+  X,
+  ArrowDownWideNarrow,
+  ArrowUpWideNarrow,
+} from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -49,9 +56,10 @@ import {
   usePollListsByStatus,
 } from '@/hooks/usePollListsWhileActive';
 import { useTriggerSyncMutation } from '@/store/api/syncApi';
-import { useAppSelector } from '@/store';
+import { useAppDispatch, useAppSelector } from '@/store';
 import { useListClientsQuery } from '@/store/api/clientsApi';
 import {
+  listsApi,
   useListNoticeTypesQuery,
   useCreateListMutation,
   useUpdateListMutation,
@@ -106,6 +114,7 @@ function currentYear(): number {
 
 export function ListsPage() {
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
   const authUser = useAppSelector((s) => s.auth.user);
   const isAdmin = authUser?.role === 'admin';
@@ -120,6 +129,8 @@ export function ListsPage() {
   const filterNoticeType = searchParams.get('noticeType') ?? '';
   const showArchivedOnly =
     searchParams.get('visibility') === VISIBILITY_ARCHIVED;
+  const sortOrder =
+    searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
 
   useEffect(() => {
     if (!searchParams.has('year')) {
@@ -198,6 +209,7 @@ export function ListsPage() {
       month: filterMonth ? Number(filterMonth) : undefined,
       noticeType: filterNoticeType || undefined,
       status: showArchivedOnly ? 'ARCHIVED' : undefined,
+      sortOrder,
       page,
       limit: 20,
     },
@@ -206,6 +218,15 @@ export function ListsPage() {
 
   const importingLists = importingOps?.data ?? [];
   const syncingLists = syncingOps?.data ?? [];
+  const prevSyncingCountRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const prev = prevSyncingCountRef.current;
+    prevSyncingCountRef.current = syncingLists.length;
+    if (prev !== null && prev > 0 && syncingLists.length === 0) {
+      dispatch(listsApi.util.invalidateTags([{ type: 'List', id: 'LIST' }]));
+    }
+  }, [syncingLists.length, dispatch]);
 
   const liveListById = useMemo(() => {
     const map = new Map<string, List>();
@@ -696,6 +717,29 @@ export function ListsPage() {
             <SelectItem value={VISIBILITY_ARCHIVED}>Archived</SelectItem>
           </SelectContent>
         </Select>
+
+        <Button
+          variant={sortOrder === 'asc' ? 'default' : 'outline'}
+          size="sm"
+          className="gap-1.5 shrink-0"
+          title={
+            sortOrder === 'desc'
+              ? 'Sorted by newest dispatch first — click for oldest first'
+              : 'Sorted by oldest dispatch first — click for newest first'
+          }
+          onClick={() =>
+            patchFilters({
+              sortOrder: sortOrder === 'desc' ? 'asc' : null,
+            })
+          }
+        >
+          {sortOrder === 'desc' ? (
+            <ArrowDownWideNarrow className="h-3.5 w-3.5" />
+          ) : (
+            <ArrowUpWideNarrow className="h-3.5 w-3.5" />
+          )}
+          {sortOrder === 'desc' ? 'Newest first' : 'Oldest first'}
+        </Button>
 
         {hasFilters && (
           <Button variant="ghost" size="sm" onClick={clearFilters}>

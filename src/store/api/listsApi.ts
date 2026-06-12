@@ -30,6 +30,16 @@ export const listsApi = baseApi.injectEndpoints({
               { type: 'List', id: 'LIST' },
             ]
           : [{ type: 'List', id: 'LIST' }],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data: result } = await queryFulfilled;
+          for (const list of result.data) {
+            dispatch(listsApi.util.upsertQueryData('getList', list._id, list));
+          }
+        } catch {
+          // ignore — list index fetch failed
+        }
+      },
     }),
 
     getList: build.query<List, string>({

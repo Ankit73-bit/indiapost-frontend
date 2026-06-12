@@ -49,7 +49,8 @@ import {
   useLazyListSyncableArticleIdsQuery,
   useGetArticleEventsQuery,
 } from '@/store/api/articlesApi';
-import { listsApi, useGetListQuery, useListListsQuery } from '@/store/api/listsApi';
+import { useListListsQuery } from '@/store/api/listsApi';
+import { usePollListQuery } from '@/hooks/usePollListQuery';
 import { SearchableListSelect } from '@/components/shared/SearchableListSelect';
 import { useListClientsQuery } from '@/store/api/clientsApi';
 import { useAppSelector } from '@/store';
@@ -59,7 +60,7 @@ import { formatDate, formatDateTime, formatRelative, STATUS_CONFIG, getApiErrorM
 import { downloadPdfFile, viewPdfInNewTab } from '@/lib/pdfFiles';
 import { toast } from '@/lib/toast';
 import { downloadListExport } from '@/lib/exportList';
-import { importPercent } from '@/lib/listProgress';
+import { importPercent, syncPercent } from '@/lib/listProgress';
 import { listDisplayName } from '@/lib/listNaming';
 import { OperationProgressBar } from '@/components/shared/OperationProgressBar';
 import type { Article, NormalizedStatus } from '@/types';
@@ -145,7 +146,7 @@ function ArticleSheet({
     clientId: article.clientId,
   });
 
-  const { data: list } = useGetListQuery(article.listId);
+  const { data: list } = usePollListQuery(article.listId);
   const hasPdf = list?.generatedPdfs?.some(
     (p) =>
       p.articleNumber.toUpperCase() === article.articleNumber.toUpperCase(),
@@ -669,14 +670,7 @@ function ListContextBar({
   onOpenPdfs: () => void;
 }) {
   const navigate = useNavigate();
-  const cachedList = useAppSelector(
-    (state) => listsApi.endpoints.getList.select(listId)(state).data,
-  );
-  const shouldPollList =
-    cachedList?.status === 'IMPORTING' || Boolean(cachedList?.pdfProgress);
-  const { data: list } = useGetListQuery(listId, {
-    pollingInterval: shouldPollList ? 3000 : 0,
-  });
+  const { data: list } = usePollListQuery(listId);
   const { data: clientsData } = useListClientsQuery(
     { limit: 100 },
     { skip: !isAdmin },
@@ -715,6 +709,15 @@ function ListContextBar({
           {(totalArticles ?? list?.totalArticles ?? 0).toLocaleString()}{' '}
           articles
         </p>
+        {list?.status === 'SYNCING' && list.syncProgress && (
+          <div className="mt-2 max-w-xs">
+            <OperationProgressBar
+              variant="sync"
+              percent={syncPercent(list)}
+              label={`${list.syncProgress.processedCount.toLocaleString()} / ${list.syncProgress.totalArticles.toLocaleString()} articles synced`}
+            />
+          </div>
+        )}
       </div>
 
       <SearchableListSelect
@@ -800,12 +803,7 @@ function ArticlesListView({
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const cachedListMeta = useAppSelector(
-    (state) => listsApi.endpoints.getList.select(listId)(state).data,
-  );
-  const { data: listMeta } = useGetListQuery(listId, {
-    pollingInterval: cachedListMeta?.status === 'IMPORTING' ? 3000 : 0,
-  });
+  const { data: listMeta } = usePollListQuery(listId);
 
   const [triggerArticlesSync, { isLoading: syncingSelected }] =
     useTriggerArticlesSyncMutation();

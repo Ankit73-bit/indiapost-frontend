@@ -277,6 +277,8 @@ export interface ListListsQuery {
   noticeType?: string;
   page?: number;
   limit?: number;
+  /** Dispatch date order — default newest dispatch first */
+  sortOrder?: 'asc' | 'desc';
 }
 
 // ─── Article ──────────────────────────────────────────────────────────────────

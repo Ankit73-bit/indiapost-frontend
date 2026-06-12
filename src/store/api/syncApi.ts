@@ -18,9 +18,10 @@ export const syncApi = baseApi.injectEndpoints({
     triggerSync: build.mutation<TriggerSyncResponse, TriggerSyncBody>({
       query: (body) => ({ url: '/api/v1/sync/trigger', method: 'POST', body }),
       transformResponse: (res: ApiSuccess<TriggerSyncResponse>) => res.data,
-      invalidatesTags: [
+      invalidatesTags: (_r, _e, body) => [
         { type: 'SyncJob', id: 'LIST' },
         { type: 'List', id: 'LIST' },
+        ...(body.listId ? [{ type: 'List' as const, id: body.listId }] : []),
         { type: 'FailedArticle', id: 'LIST' },
       ],
     }),
@@ -35,9 +36,10 @@ export const syncApi = baseApi.injectEndpoints({
         body,
       }),
       transformResponse: (res: ApiSuccess<TriggerArticlesResponse>) => res.data,
-      invalidatesTags: [
+      invalidatesTags: (_r, _e, body) => [
         { type: 'SyncJob', id: 'LIST' },
         { type: 'List', id: 'LIST' },
+        { type: 'List', id: body.listId },
         { type: 'Article', id: 'LIST' },
         { type: 'FailedArticle', id: 'LIST' },
       ],
