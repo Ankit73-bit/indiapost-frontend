@@ -115,7 +115,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Dashboard"
+        title="IndiaPost CRM"
         description={`Welcome back${authUser?.email ? `, ${authUser.email}` : ''}.`}
         actions={
           isAdmin ? (

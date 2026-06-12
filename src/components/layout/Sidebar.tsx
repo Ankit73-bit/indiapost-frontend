@@ -1,6 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard,
   Users,
   List,
   Package,
@@ -16,7 +15,6 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import { clearCredentials } from '@/store/authSlice';
 
 const NAV_ITEMS = [
-  { to: '/',         label: 'Dashboard', icon: LayoutDashboard, end: true,  adminOnly: false, customerHide: false },
   { to: '/clients',  label: 'Clients',   icon: Users,           end: false, adminOnly: true,  customerHide: false },
   { to: '/lists',    label: 'Lists',     icon: List,            end: false, adminOnly: false, customerHide: false },
   { to: '/articles', label: 'Articles',  icon: Package,         end: false, adminOnly: false, customerHide: false },
@@ -39,13 +37,22 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-screen w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-      {/* Logo */}
-      <div className="flex h-14 items-center gap-2.5 border-b border-sidebar-border px-4">
-        <Mail className="h-5 w-5 text-sidebar-primary" />
-        <span className="text-sm font-semibold text-sidebar-foreground tracking-tight">
-          IndiaPost CRM
-        </span>
-      </div>
+      {/* Home / dashboard */}
+      <NavLink
+        to="/"
+        end
+        className={({ isActive }) =>
+          cn(
+            'flex h-14 items-center gap-2.5 border-b border-sidebar-border px-4 transition-colors',
+            isActive
+              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+              : 'text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
+          )
+        }
+      >
+        <Mail className="h-5 w-5 shrink-0 text-sidebar-primary" />
+        <span className="text-sm font-semibold tracking-tight">IndiaPost CRM</span>
+      </NavLink>
 
       {/* Nav */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
