@@ -130,7 +130,7 @@ export function ListActionsMenu({
             onClick={onTriggerSync}
           >
             <RefreshCw className="h-3.5 w-3.5" />
-            Trigger sync
+            Sync
           </DropdownMenuItem>
         )}
 

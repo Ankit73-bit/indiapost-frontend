@@ -597,7 +597,7 @@ export function SyncPage() {
       <Dialog open={triggerDialogOpen} onOpenChange={setTriggerDialogOpen}>
         <DialogContent className="sm:max-w-md overflow-visible">
           <DialogHeader>
-            <DialogTitle>Trigger Sync</DialogTitle>
+            <DialogTitle>Sync</DialogTitle>
           </DialogHeader>
           <div className="min-w-0 space-y-3 py-2">
             <p className="text-sm text-muted-foreground">{scopeHint}</p>

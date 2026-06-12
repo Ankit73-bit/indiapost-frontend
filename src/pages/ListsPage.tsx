@@ -1110,7 +1110,7 @@ export function ListsPage() {
         open={Boolean(syncTarget)}
         onClose={() => setSyncTarget(null)}
         onConfirm={handleTriggerSync}
-        title="Trigger sync"
+        title="Sync"
         description="Starts India Post tracking sync for all non-terminal articles in this list."
         entityName={syncTarget?.name ?? ''}
         confirmLabel="Start sync"
