@@ -27,6 +27,7 @@ import { useListClientsQuery } from '@/store/api/clientsApi';
 import { listsApi } from '@/store/api/listsApi';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { ClientFilterSelect } from '@/components/shared/ClientFilterSelect';
+import { listDisplayName } from '@/lib/listNaming';
 import {
   syncApi,
   useTriggerSyncMutation,
@@ -207,7 +208,10 @@ export function SyncPage() {
       dispatch(listsApi.endpoints.getList.initiate(listId))
         .unwrap()
         .then((list) => {
-          setResolvedListNames((prev) => ({ ...prev, [list._id]: list.name }));
+          setResolvedListNames((prev) => ({
+            ...prev,
+            [list._id]: listDisplayName(list),
+          }));
         })
         .catch(() => {});
     }

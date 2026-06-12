@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from './apiBase';
+
 export interface ListExportFilters {
   status?: string;
   syncFailed?: boolean;
@@ -14,7 +16,7 @@ export async function downloadListExport(
 
   const qs = params.toString();
   const base =
-    import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
+    getApiBaseUrl();
   const url = `${base}/api/v1/lists/${listId}/export${qs ? `?${qs}` : ''}`;
 
   const token = localStorage.getItem('ip_token');

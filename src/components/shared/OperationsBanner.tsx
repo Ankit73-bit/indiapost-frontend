@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { useAppSelector } from '@/store';
 import { usePollListsWhileActive } from '@/hooks/usePollListsWhileActive';
 import { importPercent, syncPercent } from '@/lib/listProgress';
+import { listDisplayName } from '@/lib/listNaming';
 
 export function OperationsBanner() {
   const user = useAppSelector((s) => s.auth.user);
@@ -31,7 +32,7 @@ export function OperationsBanner() {
             to={`/lists${isAdmin ? `?clientId=${list.clientId}` : ''}`}
             className="inline-flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs text-amber-900 hover:bg-amber-100 transition-colors"
           >
-            <span className="font-medium">{list.name}</span>
+            <span className="font-medium">{listDisplayName(list)}</span>
             <span className="text-amber-800/80">
               Importing
               {list.importProgress ? ` ${importPercent(list)}%` : ''}
@@ -49,7 +50,7 @@ export function OperationsBanner() {
             }
             className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs text-blue-900 hover:bg-blue-100 transition-colors"
           >
-            <span className="font-medium">{list.name}</span>
+            <span className="font-medium">{listDisplayName(list)}</span>
             <span className="text-blue-800/80">
               Syncing
               {list.syncProgress ? ` ${syncPercent(list)}%` : ''}

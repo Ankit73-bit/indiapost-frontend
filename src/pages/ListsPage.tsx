@@ -34,13 +34,13 @@ import { downloadListExport } from '@/lib/exportList';
 import {
   buildListName,
   buildListSlug,
+  listDisplayName,
   mergeNoticeTypes,
 } from '@/lib/listNaming';
 import {
   importPercent,
   syncPercent,
   isProgressStuck,
-  importResultSummary,
 } from '@/lib/listProgress';
 import { ListStatusBadge } from '@/components/shared/StatusBadge';
 import { Pagination } from '@/components/shared/Pagination';
@@ -717,7 +717,7 @@ export function ListsPage() {
           <thead>
             <tr className="border-b border-border bg-muted/40">
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                Name
+                Notice
               </th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
                 Client
@@ -774,8 +774,8 @@ export function ListsPage() {
                     )
                   }
                 >
-                  <td className="px-4 py-3 font-medium font-mono text-xs">
-                    {list.name}
+                  <td className="px-4 py-3 font-medium text-xs">
+                    {listDisplayName(list)}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">
                     {activeClients.find((c) => c._id === list.clientId)?.name ??
@@ -814,11 +814,6 @@ export function ListsPage() {
                         />
                       </div>
                     )}
-                    {list.status === 'ACTIVE' && importResultSummary(list) && (
-                      <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
-                        {importResultSummary(list)}
-                      </p>
-                    )}
                     {list.importError && (
                       <p className="mt-1 max-w-[180px] text-xs text-destructive">
                         {list.importError}
@@ -826,7 +821,12 @@ export function ListsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right font-mono">
-                    {list.totalArticles.toLocaleString()}
+                    <div>{list.totalArticles.toLocaleString()}</div>
+                    {list.status === 'IMPORTING' && list.importProgress && (
+                      <div className="mt-0.5 text-xs font-sans text-muted-foreground">
+                        of {list.importProgress.totalRows.toLocaleString()} rows
+                      </div>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     <div>{formatDate(list.dispatchDate)}</div>
@@ -850,7 +850,9 @@ export function ListsPage() {
                       exporting={exportingListId === list._id}
                       triggeringSync={triggeringSync}
                       onUpload={(file) => handleFileUpload(list._id, file)}
-                      onExport={() => handleExport(list._id, list.name)}
+                      onExport={() =>
+                        handleExport(list._id, listDisplayName(list))
+                      }
                       onOpenPdfs={() =>
                         navigate(
                           `/articles?clientId=${list.clientId}&listId=${list._id}&pdfs=1`,

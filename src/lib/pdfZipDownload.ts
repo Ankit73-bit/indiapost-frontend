@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
+import { getApiBaseUrl } from './apiBase';
+
+const API_BASE = getApiBaseUrl();
 
 function authHeaders(): HeadersInit {
   const token = localStorage.getItem('ip_token');

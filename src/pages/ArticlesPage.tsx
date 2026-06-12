@@ -57,6 +57,7 @@ import { downloadPdfFile, viewPdfInNewTab } from '@/lib/pdfFiles';
 import { toast } from '@/lib/toast';
 import { downloadListExport } from '@/lib/exportList';
 import { importPercent } from '@/lib/listProgress';
+import { listDisplayName } from '@/lib/listNaming';
 import { OperationProgressBar } from '@/components/shared/OperationProgressBar';
 import type { Article, NormalizedStatus } from '@/types';
 import { ListPdfsDialog } from '@/components/lists/ListPdfsDialog';
@@ -635,7 +636,7 @@ function ListPicker({
             className="rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/20"
           >
             <div className="flex items-start justify-between gap-2">
-              <p className="font-medium leading-snug">{list.name}</p>
+              <p className="font-medium leading-snug">{listDisplayName(list)}</p>
               <ListStatusBadge status={list.status} />
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -699,7 +700,7 @@ function ListContextBar({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="font-medium truncate">
-            {list?.name ?? 'Loading list…'}
+            {list ? listDisplayName(list) : 'Loading list…'}
           </p>
           {list && <ListStatusBadge status={list.status} />}
         </div>
@@ -870,7 +871,7 @@ function ArticlesListView({
         onClose={() => setPdfsOpen(false)}
         listId={listId}
         clientId={clientId}
-        listName={listMeta?.name ?? 'List'}
+        listName={listMeta ? listDisplayName(listMeta) : 'List'}
         listSlug={listMeta?.slug ?? 'list'}
         isAdmin={isAdmin}
       />

@@ -19,6 +19,7 @@ import {
 import { ClientFilterSelect } from '@/components/shared/ClientFilterSelect';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { importResultSummary } from '@/lib/listProgress';
+import { listDisplayName } from '@/lib/listNaming';
 import { formatRelative } from '@/lib/helpers';
 import type { NormalizedStatus } from '@/types';
 
@@ -143,7 +144,7 @@ export function DashboardPage() {
                 }
                 className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs text-amber-900 hover:bg-amber-100"
               >
-                {list.name} — importing
+                {listDisplayName(list)} — importing
               </button>
             ))}
             {syncingLists.map((list) => (
@@ -157,7 +158,7 @@ export function DashboardPage() {
                 }
                 className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs text-blue-900 hover:bg-blue-100"
               >
-                {list.name} — syncing
+                {listDisplayName(list)} — syncing
               </button>
             ))}
           </div>
@@ -359,8 +360,8 @@ export function DashboardPage() {
                       }
                     >
                       <td className="py-2.5">
-                        <p className="font-medium">{list.name}</p>
-                        {importSummary && list.status === 'ACTIVE' && (
+                        <p className="font-medium">{listDisplayName(list)}</p>
+                        {importSummary && (
                           <p className="mt-0.5 text-xs text-muted-foreground">
                             Last import: {importSummary}
                           </p>

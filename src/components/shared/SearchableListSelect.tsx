@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useGetListQuery, useListListsQuery } from '@/store/api/listsApi';
+import { listDisplayName } from '@/lib/listNaming';
 import type { List, ListStatus } from '@/types';
 
 export const ALL_LISTS_VALUE = '__all_lists__';
@@ -188,7 +189,7 @@ function SearchableListSelectMenu({
           <Search className="absolute left-2 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             className="h-8 pl-7 text-xs"
-            placeholder="Search by list name…"
+            placeholder="Search by notice name…"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             autoFocus
@@ -240,9 +241,9 @@ function SearchableListSelectMenu({
               )}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => selectOption(l._id, anchorRef, onChange, onClose)}
-              title={l.name}
+              title={listDisplayName(l)}
             >
-              <span className="block truncate font-mono text-xs">{l.name}</span>
+              <span className="block truncate text-xs">{listDisplayName(l)}</span>
               <span className="block truncate text-xs text-muted-foreground">
                 {l.totalArticles.toLocaleString()} articles
                 {l.noticeType ? ` · ${l.noticeType}` : ''}
@@ -313,7 +314,11 @@ export function SearchableListSelect({
   const selectedLabel =
     value === allOptionValue
       ? allOptionLabel
-      : (selectedList?.name ?? (value ? 'Loading…' : placeholder));
+      : (selectedList
+          ? listDisplayName(selectedList)
+          : value
+            ? 'Loading…'
+            : placeholder);
 
   return (
     <div ref={containerRef} className={cn('relative min-w-0 max-w-full', className)}>

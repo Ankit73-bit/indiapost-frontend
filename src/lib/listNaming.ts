@@ -1,5 +1,14 @@
 import { toSlug } from '@/lib/helpers';
 
+/** Short label for UI — prefers noticeName over the long generated slug. */
+export function listDisplayName(list: {
+  noticeName?: string;
+  name: string;
+}): string {
+  const notice = list.noticeName?.trim();
+  return notice || list.name;
+}
+
 export interface ListNamingInput {
   clientSlug: string;
   noticeType: string;

@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { getApiBaseUrl } from '@/lib/apiBase';
 import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { Pagination } from '@/components/shared/Pagination';
 import {
@@ -61,7 +62,7 @@ function RegisterUserDialog({
   onClose: () => void;
   clientOptions: { _id: string; name: string }[];
 }) {
-  const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:5000';
+  const apiUrl = getApiBaseUrl() || window.location.origin;
   const token = useAppSelector((s) => s.auth.token);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

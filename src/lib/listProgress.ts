@@ -22,9 +22,23 @@ export function isProgressStuck(
 
 export function importResultSummary(list: List): string | null {
   const r = list.lastImportResult;
-  if (!r) return null;
+  if (!r?.completedAt) return null;
+
   const errors = r.errorRows?.length ?? 0;
-  const parts = [`${r.imported.toLocaleString()} imported`];
+  const parts: string[] = [];
+
+  if (r.totalRows > 0) {
+    parts.push(
+      `${r.imported.toLocaleString()} of ${r.totalRows.toLocaleString()} imported`,
+    );
+  } else if (r.imported > 0) {
+    parts.push(`${r.imported.toLocaleString()} imported`);
+  } else if (list.uploadedFile) {
+    parts.push('0 rows imported');
+  } else {
+    return null;
+  }
+
   if (r.skipped > 0) parts.push(`${r.skipped} skipped`);
   if (errors > 0) parts.push(`${errors} errors`);
   return parts.join(' · ');
