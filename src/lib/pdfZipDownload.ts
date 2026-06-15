@@ -13,7 +13,7 @@ export type PdfZipJobStatus = {
   processed: number;
   total: number;
   percent: number;
-  phase: 'adding' | 'compressing' | 'uploading';
+  phase: 'generating' | 'compressing' | 'uploading';
   startedAt: string;
   finishedAt?: string;
   error?: string;
@@ -46,7 +46,7 @@ export function formatZipEta(seconds: number | null | undefined): string {
 function zipPhaseLabel(phase: PdfZipJobStatus['phase']): string {
   if (phase === 'uploading') return 'Uploading archive…';
   if (phase === 'compressing') return 'Compressing archive…';
-  return 'Adding PDFs to archive…';
+  return 'Generating PDFs…';
 }
 
 export function zipJobStatusLabel(job: PdfZipJobStatus): string {
@@ -165,6 +165,24 @@ export class PdfZipDownloadCancelledError extends Error {
   }
 }
 
+export async function notifyPdfZipJobComplete(
+  listId: string,
+  clientId: string,
+  jobId: string,
+): Promise<void> {
+  await fetch(
+    `${API_BASE}/api/v1/lists/${listId}/pdfs/download-jobs/${jobId}/complete`,
+    {
+      method: 'POST',
+      headers: {
+        ...authHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ clientId }),
+    },
+  ).catch(() => undefined);
+}
+
 export async function runPdfZipDownload(options: {
   listId: string;
   clientId: string;
@@ -208,6 +226,7 @@ export async function runPdfZipDownload(options: {
 
   if (current.downloadUrl) {
     triggerBrowserDownload(current.downloadUrl, current.fileName);
+    void notifyPdfZipJobComplete(options.listId, options.clientId, current.jobId);
   } else {
     await downloadPdfZipJobFile(
       options.listId,
@@ -215,6 +234,7 @@ export async function runPdfZipDownload(options: {
       current.jobId,
       current.fileName,
     );
+    void notifyPdfZipJobComplete(options.listId, options.clientId, current.jobId);
   }
 
   return { count: current.total, fileName: current.fileName };

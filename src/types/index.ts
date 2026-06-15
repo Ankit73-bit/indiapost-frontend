@@ -168,11 +168,18 @@ export interface SyncProgress {
   startedAt: string;
 }
 
+export interface PdfArticleItem {
+  articleNumber: string;
+  isTerminal: boolean;
+  normalizedStatus?: string;
+}
+
+/** @deprecated Legacy — PDFs are no longer pre-stored in S3 */
 export interface GeneratedPdf {
   articleNumber: string;
-  s3Key: string;
-  sizeBytes: number;
-  generatedAt: string;
+  s3Key?: string;
+  sizeBytes?: number;
+  generatedAt?: string;
   isTerminal: boolean;
 }
 
@@ -196,10 +203,9 @@ export interface PdfGenerationResult {
 export interface ListPdfsSummary {
   totalArticles: number;
   pdfCount: number;
-  generatedPdfs: GeneratedPdf[];
-  pdfProgress?: PdfGenerationProgress;
-  lastPdfGenerationResult?: PdfGenerationResult;
-  pdfError?: string;
+  articles: PdfArticleItem[];
+  /** @deprecated Use articles — kept for older API responses */
+  generatedPdfs?: GeneratedPdf[];
 }
 
 export type ListStats = Partial<Record<NormalizedStatus, number>>;

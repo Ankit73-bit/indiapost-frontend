@@ -40,6 +40,15 @@ export async function fetchPdfBlob(
   return res.blob();
 }
 
+export async function loadPdfBlobUrl(
+  listId: string,
+  articleNumber: string,
+  clientId: string,
+): Promise<string> {
+  const blob = await fetchPdfBlob(listId, articleNumber, clientId, true);
+  return URL.createObjectURL(blob);
+}
+
 export async function downloadPdfFile(
   listId: string,
   articleNumber: string,
@@ -53,13 +62,13 @@ export async function downloadPdfFile(
   URL.revokeObjectURL(a.href);
 }
 
+/** @deprecated Use loadPdfBlobUrl + PdfViewerPanel for in-app viewing */
 export async function viewPdfInNewTab(
   listId: string,
   articleNumber: string,
   clientId: string,
 ): Promise<void> {
-  const blob = await fetchPdfBlob(listId, articleNumber, clientId, true);
-  const url = URL.createObjectURL(blob);
+  const url = await loadPdfBlobUrl(listId, articleNumber, clientId);
   window.open(url, '_blank', 'noopener,noreferrer');
   window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }

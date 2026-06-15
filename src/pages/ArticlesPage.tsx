@@ -57,7 +57,8 @@ import { useAppSelector } from '@/store';
 import { ALL_STATUSES, TERMINAL_STATUSES } from '@/types';
 import { useTriggerArticlesSyncMutation } from '@/store/api/syncApi';
 import { formatDate, formatDateTime, formatRelative, STATUS_CONFIG, getApiErrorMessage } from '@/lib/helpers';
-import { downloadPdfFile, viewPdfInNewTab } from '@/lib/pdfFiles';
+import { downloadPdfFile } from '@/lib/pdfFiles';
+import { PdfViewerPanelLoader } from '@/components/lists/PdfViewerPanelLoader';
 import { toast } from '@/lib/toast';
 import { downloadListExport } from '@/lib/exportList';
 import { importPercent, syncPercent } from '@/lib/listProgress';
@@ -147,26 +148,8 @@ function ArticleSheet({
   });
 
   const { data: list } = usePollListQuery(article.listId);
-  const hasPdf = list?.generatedPdfs?.some(
-    (p) =>
-      p.articleNumber.toUpperCase() === article.articleNumber.toUpperCase(),
-  );
   const [pdfBusy, setPdfBusy] = useState(false);
-
-  async function handleViewPdf() {
-    setPdfBusy(true);
-    try {
-      await viewPdfInNewTab(
-        article.listId,
-        article.articleNumber,
-        article.clientId,
-      );
-    } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Failed to open PDF'));
-    } finally {
-      setPdfBusy(false);
-    }
-  }
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false);
 
   async function handleDownloadPdf() {
     setPdfBusy(true);
@@ -202,8 +185,46 @@ function ArticleSheet({
   const events = eventsData?.data ?? [];
 
   return (
-    <Sheet open onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="flex h-full w-full flex-col gap-0 p-0 sm:max-w-md">
+      <Sheet
+        open
+        onOpenChange={(o) => {
+          if (!o) {
+            setPdfViewerOpen(false);
+            onClose();
+          }
+        }}
+      >
+        <SheetContent
+          className={cn(
+            'flex h-full flex-col gap-0 p-0 transition-[max-width,width] duration-200 ease-out',
+            pdfViewerOpen
+              ? 'w-[min(96vw,1200px)] sm:max-w-[min(96vw,1200px)]!'
+              : 'sm:max-w-md!',
+          )}
+        >
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            {pdfViewerOpen && (
+              <div className="flex min-h-0 min-w-0 w-1/2 flex-col border-r border-border">
+                <PdfViewerPanelLoader
+                  target={{
+                    listId: article.listId,
+                    clientId: article.clientId,
+                    articleNumber: article.articleNumber,
+                  }}
+                  onClose={() => setPdfViewerOpen(false)}
+                  onDownload={() => void handleDownloadPdf()}
+                  downloading={pdfBusy}
+                  showBackButton={false}
+                />
+              </div>
+            )}
+
+            <div
+              className={cn(
+                'flex min-h-0 min-w-0 flex-col',
+                pdfViewerOpen ? 'w-1/2' : 'w-full',
+              )}
+            >
         {/* Header */}
         <SheetHeader className="shrink-0 space-y-3 border-b border-border px-4 py-4 pr-12">
           <div className="space-y-1">
@@ -259,29 +280,25 @@ function ArticleSheet({
             </div>
           )}
 
-          {hasPdf && (
+          {list && (
             <div className="rounded-lg border border-border bg-muted/20 px-3 py-3">
               <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                 <FileText className="h-3.5 w-3.5" />
                 Tracking PDF
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                India Post status report is available for this article.
+                Generated on demand with the latest tracking events.
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Button
-                  variant="outline"
+                  variant={pdfViewerOpen ? 'default' : 'outline'}
                   size="sm"
                   className="h-8 gap-1.5"
                   disabled={pdfBusy}
-                  onClick={() => void handleViewPdf()}
+                  onClick={() => setPdfViewerOpen((open) => !open)}
                 >
-                  {pdfBusy ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Eye className="h-3.5 w-3.5" />
-                  )}
-                  View PDF
+                  <Eye className="h-3.5 w-3.5" />
+                  {pdfViewerOpen ? 'Hide PDF' : 'View PDF'}
                 </Button>
                 <Button
                   variant="outline"
@@ -512,8 +529,10 @@ function ArticleSheet({
             </div>
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
   );
 }
 
@@ -738,13 +757,10 @@ function ListContextBar({
       >
         <FileText className="h-3.5 w-3.5" />
         PDFs
-        {(list?.generatedPdfs?.length ?? 0) > 0 && (
+        {(totalArticles ?? list?.totalArticles ?? 0) > 0 && (
           <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary tabular-nums">
-            {list!.generatedPdfs!.length}
+            {(totalArticles ?? list?.totalArticles ?? 0).toLocaleString()}
           </span>
-        )}
-        {list?.pdfProgress && (
-          <Loader2 className="h-3 w-3 animate-spin text-violet-600" />
         )}
       </Button>
     </div>
@@ -955,11 +971,11 @@ function ArticlesListView({
 
   const pdfArticleNumbers = useMemo(() => {
     const set = new Set<string>();
-    for (const p of listMeta?.generatedPdfs ?? []) {
-      set.add(p.articleNumber.toUpperCase());
+    for (const a of data?.data ?? []) {
+      set.add(a.articleNumber.toUpperCase());
     }
     return set;
-  }, [listMeta?.generatedPdfs]);
+  }, [data?.data]);
 
   const isImporting = listMeta?.status === 'IMPORTING';
 
