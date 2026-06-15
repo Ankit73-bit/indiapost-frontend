@@ -889,7 +889,13 @@ export function ListsPage() {
                       </div>
                     )}
                     {list.importError && (
-                      <p className="mt-1 max-w-[180px] text-xs text-destructive">
+                      <p
+                        className="mt-1 max-w-xs text-xs text-destructive"
+                        title={
+                          list.lastImportResult?.errorRows?.[0]?.reason ??
+                          list.importError
+                        }
+                      >
                         {list.importError}
                       </p>
                     )}
