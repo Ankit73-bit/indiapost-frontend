@@ -11,9 +11,11 @@ import { toast } from '@/lib/toast';
 import { getApiErrorMessage } from '@/lib/helpers';
 import {
   PdfZipDownloadCancelledError,
+  runBulkPdfZipDownload,
   runPdfZipDownload,
   type PdfZipJobStatus,
 } from '@/lib/pdfZipDownload';
+import type { BulkExportFilters } from '@/lib/exportList';
 
 export interface ZipDownloadTask {
   id: string;
@@ -33,9 +35,18 @@ interface StartZipDownloadOptions {
   onComplete?: () => void;
 }
 
+interface StartBulkZipDownloadOptions {
+  clientId: string;
+  clientName: string;
+  filters: BulkExportFilters;
+  label: string;
+  onComplete?: () => void;
+}
+
 interface ZipDownloadContextValue {
   tasks: ZipDownloadTask[];
   startZipDownload: (options: StartZipDownloadOptions) => void;
+  startBulkZipDownload: (options: StartBulkZipDownloadOptions) => void;
   cancelZipDownload: (taskId: string) => void;
   isListZipBusy: (listId: string) => boolean;
   getListTask: (listId: string) => ZipDownloadTask | undefined;
@@ -115,6 +126,55 @@ export function ZipDownloadProvider({ children }: { children: ReactNode }) {
     [removeTask, updateTask],
   );
 
+  const startBulkZipDownload = useCallback(
+    (options: StartBulkZipDownloadOptions) => {
+      const taskId = newTaskId();
+      const cancelRef = { current: false };
+      cancelRefs.current.set(taskId, cancelRef);
+      const bulkListId = `bulk:${options.clientId}`;
+
+      setTasks((prev) => [
+        ...prev,
+        {
+          id: taskId,
+          listId: bulkListId,
+          listName: options.clientName,
+          label: options.label,
+          job: null,
+          cancelling: false,
+        },
+      ]);
+
+      void (async () => {
+        try {
+          const result = await runBulkPdfZipDownload({
+            filters: options.filters,
+            onProgress: (job) => updateTask(taskId, { job }),
+            isCancelled: () => cancelRef.current,
+          });
+          toast.success(
+            `${options.clientName}: downloaded ${result.count.toLocaleString()} PDFs as ${result.fileName}`,
+          );
+          options.onComplete?.();
+        } catch (err) {
+          if (err instanceof PdfZipDownloadCancelledError) {
+            toast.info(`${options.clientName}: PDF ZIP download cancelled`);
+          } else {
+            toast.error(
+              getApiErrorMessage(
+                err,
+                `${options.clientName}: failed to download PDFs`,
+              ),
+            );
+          }
+        } finally {
+          removeTask(taskId);
+        }
+      })();
+    },
+    [removeTask, updateTask],
+  );
+
   const cancelZipDownload = useCallback(
     (taskId: string) => {
       const cancelRef = cancelRefs.current.get(taskId);
@@ -148,11 +208,12 @@ export function ZipDownloadProvider({ children }: { children: ReactNode }) {
     () => ({
       tasks,
       startZipDownload,
+      startBulkZipDownload,
       cancelZipDownload,
       isListZipBusy,
       getListTask,
     }),
-    [tasks, startZipDownload, cancelZipDownload, isListZipBusy, getListTask],
+    [tasks, startZipDownload, startBulkZipDownload, cancelZipDownload, isListZipBusy, getListTask],
   );
 
   return (

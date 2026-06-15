@@ -196,15 +196,15 @@ function ArticleSheet({
       >
         <SheetContent
           className={cn(
-            'flex h-full flex-col gap-0 p-0 transition-[max-width,width] duration-200 ease-out',
+            'flex h-full flex-col gap-0 p-0 transition-[transform,opacity]!',
             pdfViewerOpen
               ? 'w-[min(96vw,1200px)] sm:max-w-[min(96vw,1200px)]!'
-              : 'sm:max-w-md!',
+              : 'w-md sm:max-w-md!',
           )}
         >
           <div className="flex min-h-0 flex-1 overflow-hidden">
             {pdfViewerOpen && (
-              <div className="flex min-h-0 min-w-0 w-1/2 flex-col border-r border-border">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col border-r border-border">
                 <PdfViewerPanelLoader
                   target={{
                     listId: article.listId,
@@ -221,8 +221,8 @@ function ArticleSheet({
 
             <div
               className={cn(
-                'flex min-h-0 min-w-0 flex-col',
-                pdfViewerOpen ? 'w-1/2' : 'w-full',
+                'flex min-h-0 flex-col overflow-hidden',
+                pdfViewerOpen ? 'w-md shrink-0' : 'w-full',
               )}
             >
         {/* Header */}

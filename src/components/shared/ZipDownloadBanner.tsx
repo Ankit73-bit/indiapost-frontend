@@ -24,7 +24,7 @@ export function ZipDownloadBanner() {
                 processed: 0,
                 total: 0,
                 percent: 0,
-                phase: 'adding',
+                phase: 'generating',
                 startedAt: new Date().toISOString(),
                 etaSeconds: null,
               }

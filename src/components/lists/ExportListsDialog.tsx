@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { downloadBulkExport, type BulkExportFilters } from '@/lib/exportList';
+import { useZipDownload } from '@/components/lists/ZipDownloadProvider';
 import type { Client } from '@/types';
 
 const MONTH_OPTIONS = [
@@ -86,7 +87,9 @@ export function ExportListsDialog({
   const [dispatchFrom, setDispatchFrom] = useState('');
   const [dispatchTo, setDispatchTo] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [startingPdfZip, setStartingPdfZip] = useState(false);
   const [error, setError] = useState('');
+  const { startBulkZipDownload } = useZipDownload();
 
   useEffect(() => {
     if (!open) return;
@@ -174,21 +177,48 @@ export function ExportListsDialog({
     }
   }
 
+  async function handleDownloadPdfs() {
+    setError('');
+    const filters = buildFilters();
+    if (!filters) return;
+
+    const clientName =
+      clients.find((c) => c._id === filters.clientId)?.name ?? 'Export';
+
+    setStartingPdfZip(true);
+    try {
+      startBulkZipDownload({
+        clientId: filters.clientId,
+        clientName,
+        filters,
+        label: 'Generating filtered PDFs…',
+        onComplete: () => onSuccess?.(),
+      });
+      onClose();
+    } catch {
+      setError('Failed to start PDF download. Check your filters and try again.');
+    } finally {
+      setStartingPdfZip(false);
+    }
+  }
+
+  const busy = exporting || startingPdfZip;
+
   return (
     <Dialog
       open={open}
       onOpenChange={(isOpen) => {
-        if (!isOpen && !exporting) onClose();
+        if (!isOpen && !busy) onClose();
       }}
     >
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Export articles to Excel</DialogTitle>
+          <DialogTitle>Export articles</DialogTitle>
         </DialogHeader>
 
         <p className="text-sm text-muted-foreground">
-          Export articles across multiple lists. Per-list export is still available
-          from each row&apos;s actions menu.
+          Export articles across multiple lists as Excel or a ZIP of tracking PDFs.
+          Per-list export is still available from each row&apos;s actions menu.
         </p>
 
         {isAdmin && (
@@ -346,11 +376,24 @@ export function ExportListsDialog({
           </div>
         )}
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose} disabled={exporting}>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
-          <Button type="button" onClick={handleExport} disabled={exporting}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleDownloadPdfs}
+            disabled={busy}
+          >
+            {startingPdfZip ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <FileText className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            Download PDFs
+          </Button>
+          <Button type="button" onClick={handleExport} disabled={busy}>
             {exporting ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
             ) : (

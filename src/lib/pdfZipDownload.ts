@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from './apiBase';
+import type { BulkExportFilters } from './exportList';
 
 const API_BASE = getApiBaseUrl();
 
@@ -235,6 +236,160 @@ export async function runPdfZipDownload(options: {
       current.fileName,
     );
     void notifyPdfZipJobComplete(options.listId, options.clientId, current.jobId);
+  }
+
+  return { count: current.total, fileName: current.fileName };
+}
+
+function bulkFiltersBody(filters: BulkExportFilters): Record<string, unknown> {
+  return {
+    clientId: filters.clientId,
+    ...(filters.year != null ? { year: filters.year } : {}),
+    ...(filters.month != null ? { month: filters.month } : {}),
+    ...(filters.noticeType ? { noticeType: filters.noticeType } : {}),
+    ...(filters.dispatchFrom ? { dispatchFrom: filters.dispatchFrom } : {}),
+    ...(filters.dispatchTo ? { dispatchTo: filters.dispatchTo } : {}),
+    ...(filters.status ? { status: filters.status } : {}),
+    ...(filters.syncFailed ? { syncFailed: 'true' } : {}),
+    ...(filters.includeArchived ? { includeArchived: 'true' } : {}),
+  };
+}
+
+export async function startBulkPdfZipJob(
+  filters: BulkExportFilters,
+): Promise<PdfZipJobStatus> {
+  const res = await fetch(`${API_BASE}/api/v1/lists/pdfs/bulk-download-jobs`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(bulkFiltersBody(filters)),
+  });
+
+  if (!res.ok) {
+    throw new Error(await parseError(res, 'Failed to start bulk PDF download'));
+  }
+
+  const json = (await res.json()) as { data: PdfZipJobStatus };
+  return json.data;
+}
+
+export async function fetchBulkPdfZipJob(
+  clientId: string,
+  jobId: string,
+): Promise<PdfZipJobStatus> {
+  const params = new URLSearchParams({ clientId });
+  const res = await fetch(
+    `${API_BASE}/api/v1/lists/pdfs/bulk-download-jobs/${jobId}?${params}`,
+    { headers: authHeaders() },
+  );
+
+  if (!res.ok) {
+    throw new Error(await parseError(res, 'Failed to get bulk download status'));
+  }
+
+  const json = (await res.json()) as { data: PdfZipJobStatus };
+  return json.data;
+}
+
+export async function cancelBulkPdfZipJob(
+  clientId: string,
+  jobId: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API_BASE}/api/v1/lists/pdfs/bulk-download-jobs/${jobId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        ...authHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ clientId }),
+    },
+  );
+
+  if (!res.ok) {
+    throw new Error(await parseError(res, 'Failed to cancel bulk download'));
+  }
+}
+
+async function downloadBulkPdfZipJobFile(
+  clientId: string,
+  jobId: string,
+  fileName: string,
+): Promise<void> {
+  const params = new URLSearchParams({ clientId });
+  const res = await fetch(
+    `${API_BASE}/api/v1/lists/pdfs/bulk-download-jobs/${jobId}/file?${params}`,
+    { headers: authHeaders() },
+  );
+
+  if (!res.ok) {
+    throw new Error(await parseError(res, 'Failed to download bulk ZIP file'));
+  }
+
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  triggerBrowserDownload(objectUrl, fileName);
+  URL.revokeObjectURL(objectUrl);
+}
+
+export async function notifyBulkPdfZipJobComplete(
+  clientId: string,
+  jobId: string,
+): Promise<void> {
+  await fetch(
+    `${API_BASE}/api/v1/lists/pdfs/bulk-download-jobs/${jobId}/complete`,
+    {
+      method: 'POST',
+      headers: {
+        ...authHeaders(),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ clientId }),
+    },
+  ).catch(() => undefined);
+}
+
+export async function runBulkPdfZipDownload(options: {
+  filters: BulkExportFilters;
+  onProgress: (job: PdfZipJobStatus) => void;
+  isCancelled: () => boolean;
+}): Promise<{ count: number; fileName: string }> {
+  const clientId = options.filters.clientId;
+  const job = await startBulkPdfZipJob(options.filters);
+  options.onProgress(job);
+
+  let current = job;
+  while (current.status === 'building') {
+    if (options.isCancelled()) {
+      await cancelBulkPdfZipJob(clientId, current.jobId);
+      throw new PdfZipDownloadCancelledError();
+    }
+    await sleep(1000);
+    current = await fetchBulkPdfZipJob(clientId, current.jobId);
+    options.onProgress(current);
+  }
+
+  if (current.status === 'cancelled') {
+    throw new PdfZipDownloadCancelledError();
+  }
+
+  if (current.status === 'failed') {
+    throw new Error(current.error ?? 'ZIP build failed');
+  }
+
+  if (current.status !== 'ready' || !current.fileName) {
+    throw new Error('ZIP download did not complete');
+  }
+
+  if (current.downloadUrl) {
+    triggerBrowserDownload(current.downloadUrl, current.fileName);
+    void notifyBulkPdfZipJobComplete(clientId, current.jobId);
+  } else {
+    await downloadBulkPdfZipJobFile(clientId, current.jobId, current.fileName);
+    void notifyBulkPdfZipJobComplete(clientId, current.jobId);
   }
 
   return { count: current.total, fileName: current.fileName };
