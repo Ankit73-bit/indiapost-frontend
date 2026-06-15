@@ -23,11 +23,13 @@ function SidebarNavLink({
   label,
   end,
   nested,
-}: NavLeaf & { nested?: boolean }) {
+  onNavigate,
+}: NavLeaf & { nested?: boolean; onNavigate?: () => void }) {
   return (
     <NavLink
       to={to}
       end={end}
+      onClick={onNavigate}
       className={({ isActive }) =>
         cn(
           'flex items-center rounded px-3 py-2 text-sm transition-colors',
@@ -48,8 +50,10 @@ function SidebarNavLink({
 
 function SidebarNavGroup({
   group,
+  onNavigate,
 }: {
   group: NavGroupItem;
+  onNavigate?: () => void;
 }) {
   const { pathname } = useLocation();
   const childActive = isGroupActive(pathname, group.children);
@@ -87,7 +91,12 @@ function SidebarNavGroup({
       {open && (
         <div className="ml-3 space-y-0.5 border-l border-sidebar-border pl-2">
           {group.children.map((child) => (
-            <SidebarNavLink key={child.to} {...child} nested />
+            <SidebarNavLink
+              key={child.to}
+              {...child}
+              nested
+              onNavigate={onNavigate}
+            />
           ))}
         </div>
       )}
@@ -95,14 +104,26 @@ function SidebarNavGroup({
   );
 }
 
-export function SidebarNav({ isAdmin }: { isAdmin: boolean }) {
+export function SidebarNav({
+  isAdmin,
+  onNavigate,
+}: {
+  isAdmin: boolean;
+  onNavigate?: () => void;
+}) {
   const items = filterNavItems(NAV_ITEMS, isAdmin);
 
   return (
     <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
       {items.map((item) => {
         if (item.kind === 'group') {
-          return <SidebarNavGroup key={item.label} group={item} />;
+          return (
+            <SidebarNavGroup
+              key={item.label}
+              group={item}
+              onNavigate={onNavigate}
+            />
+          );
         }
 
         const Icon = item.icon;
@@ -111,6 +132,7 @@ export function SidebarNav({ isAdmin }: { isAdmin: boolean }) {
             key={item.to}
             to={item.to}
             end={item.end}
+            onClick={onNavigate}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-2.5 rounded px-3 py-2 text-sm transition-colors',

@@ -196,15 +196,15 @@ function ArticleSheet({
       >
         <SheetContent
           className={cn(
-            'flex h-full flex-col gap-0 p-0 transition-[transform,opacity]!',
+            'flex h-full w-full flex-col gap-0 p-0 transition-[transform,opacity]!',
             pdfViewerOpen
-              ? 'w-[min(96vw,1200px)] sm:max-w-[min(96vw,1200px)]!'
-              : 'w-md sm:max-w-md!',
+              ? 'sm:max-w-[min(96vw,1200px)]! lg:w-[min(96vw,1200px)]'
+              : 'sm:max-w-md!',
           )}
         >
-          <div className="flex min-h-0 flex-1 overflow-hidden">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
             {pdfViewerOpen && (
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col border-r border-border">
+              <div className="flex max-h-[45vh] min-h-0 min-w-0 flex-1 flex-col border-b border-border lg:max-h-none lg:border-b-0 lg:border-r">
                 <PdfViewerPanelLoader
                   target={{
                     listId: article.listId,
@@ -222,7 +222,7 @@ function ArticleSheet({
             <div
               className={cn(
                 'flex min-h-0 flex-col overflow-hidden',
-                pdfViewerOpen ? 'w-md shrink-0' : 'w-full',
+                pdfViewerOpen ? 'w-full lg:w-md lg:shrink-0' : 'w-full',
               )}
             >
         {/* Header */}
@@ -1152,7 +1152,7 @@ function ArticlesListView({
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-border bg-card overflow-x-auto">
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
         {isError ? (
           <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
             <AlertCircle className="h-6 w-6 text-destructive" />
@@ -1165,7 +1165,8 @@ function ArticlesListView({
             </Button>
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/40">
                 <th className="w-10 px-3 py-2.5">
@@ -1388,6 +1389,7 @@ function ArticlesListView({
               })}
             </tbody>
           </table>
+          </div>
         )}
 
         {!isError && data?.meta && data.meta.totalPages > 1 && (

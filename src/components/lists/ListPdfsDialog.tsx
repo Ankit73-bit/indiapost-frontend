@@ -186,9 +186,9 @@ function ListPdfsDialogBody({
   const totalArticles = summary?.totalArticles ?? 0;
 
   return (
-    <div className="flex min-h-0 flex-1 overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       {viewingArticle && (
-        <div className="flex min-h-0 min-w-0 w-1/2 flex-col border-r border-border">
+        <div className="flex max-h-[45vh] min-h-0 min-w-0 flex-1 flex-col border-b border-border lg:max-h-none lg:w-1/2 lg:border-b-0 lg:border-r">
           <PdfViewerPanelLoader
             target={{ listId, clientId, articleNumber: viewingArticle }}
             onClose={() => onViewingArticleChange(null)}
@@ -202,7 +202,7 @@ function ListPdfsDialogBody({
       <div
         className={cn(
           'flex min-h-0 min-w-0 flex-col',
-          viewingArticle ? 'w-1/2' : 'w-full',
+          viewingArticle ? 'w-full lg:w-1/2' : 'w-full',
         )}
       >
       <DialogHeader className="shrink-0 space-y-1 border-b border-border px-5 py-4">
@@ -474,9 +474,9 @@ export function ListPdfsDialog({
     >
       <DialogContent
         className={cn(
-          'flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0',
+          'flex max-h-[90dvh] w-[calc(100vw-1.5rem)] flex-col gap-0 overflow-hidden p-0 sm:max-h-[85vh]',
           viewingArticle
-            ? 'w-[min(96vw,1200px)] sm:max-w-[min(96vw,1200px)]!'
+            ? 'sm:w-[min(96vw,1200px)] sm:max-w-[min(96vw,1200px)]!'
             : 'sm:max-w-2xl!',
         )}
       >

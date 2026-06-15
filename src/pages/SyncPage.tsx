@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { TableShell } from '@/components/shared/TableShell';
 // import { TrackingRetentionAdminNote } from '@/components/shared/TrackingRetentionAdminNote';
 import { SearchableListSelect } from '@/components/shared/SearchableListSelect';
 import { SyncJobStatusBadge } from '@/components/shared/StatusBadge';
@@ -476,7 +477,7 @@ export function SyncPage() {
           patchParams({ tab: tab === 'jobs' ? null : tab })
         }
       >
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 h-auto w-full flex-wrap justify-start">
           <TabsTrigger value="jobs">Sync Jobs</TabsTrigger>
           <TabsTrigger value="failed">
             Failed Articles
@@ -497,7 +498,16 @@ export function SyncPage() {
         </TabsList>
 
         <TabsContent value="jobs">
-          <div className="rounded-lg border border-border bg-card">
+          <TableShell
+            minWidthClass="min-w-[900px]"
+            footer={
+              jobsData?.meta && jobsData.meta.total > 0 ? (
+                <div className="px-4 pb-4">
+                  <Pagination meta={jobsData.meta} onPageChange={setJobsPage} />
+                </div>
+              ) : undefined
+            }
+          >
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
@@ -601,12 +611,7 @@ export function SyncPage() {
                 ))}
               </tbody>
             </table>
-            {jobsData?.meta && jobsData.meta.total > 0 && (
-              <div className="px-4 pb-4">
-                <Pagination meta={jobsData.meta} onPageChange={setJobsPage} />
-              </div>
-            )}
-          </div>
+          </TableShell>
         </TabsContent>
 
         <TabsContent value="failed">
@@ -650,7 +655,18 @@ export function SyncPage() {
               </span>
             )}
           </div>
-          <div className="rounded-lg border border-border bg-card">
+          <TableShell
+            footer={
+              failedData?.meta && failedData.meta.totalPages > 1 ? (
+                <div className="px-4 pb-4">
+                  <Pagination
+                    meta={failedData.meta}
+                    onPageChange={setFailedPage}
+                  />
+                </div>
+              ) : undefined
+            }
+          >
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
@@ -737,15 +753,7 @@ export function SyncPage() {
                 ))}
               </tbody>
             </table>
-            {failedData?.meta && failedData.meta.totalPages > 1 && (
-              <div className="px-4 pb-4">
-                <Pagination
-                  meta={failedData.meta}
-                  onPageChange={setFailedPage}
-                />
-              </div>
-            )}
-          </div>
+          </TableShell>
         </TabsContent>
 
         <TabsContent value="expired">
@@ -753,7 +761,18 @@ export function SyncPage() {
             Articles past India Post&apos;s ~60-day tracking window. Local
             tracking events are kept; further syncs are skipped automatically.
           </p>
-          <div className="rounded-lg border border-border bg-card">
+          <TableShell
+            footer={
+              expiredData?.meta && expiredData.meta.totalPages > 1 ? (
+                <div className="px-4 pb-4">
+                  <Pagination
+                    meta={expiredData.meta}
+                    onPageChange={setExpiredPage}
+                  />
+                </div>
+              ) : undefined
+            }
+          >
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
@@ -816,15 +835,7 @@ export function SyncPage() {
                 ))}
               </tbody>
             </table>
-            {expiredData?.meta && expiredData.meta.totalPages > 1 && (
-              <div className="px-4 pb-4">
-                <Pagination
-                  meta={expiredData.meta}
-                  onPageChange={setExpiredPage}
-                />
-              </div>
-            )}
-          </div>
+          </TableShell>
         </TabsContent>
       </Tabs>
 

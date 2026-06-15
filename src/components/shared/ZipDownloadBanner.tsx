@@ -8,7 +8,7 @@ export function ZipDownloadBanner() {
   if (tasks.length === 0) return null;
 
   return (
-    <div className="border-b border-border bg-muted/30 px-6 py-3">
+    <div className="border-b border-border bg-muted/30 px-4 py-3 sm:px-6">
       <div className="mx-auto max-w-7xl space-y-2">
         <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />

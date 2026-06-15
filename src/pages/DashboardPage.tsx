@@ -319,7 +319,8 @@ export function DashboardPage() {
                 View all
               </button>
             </div>
-            <table className="w-full text-sm">
+            <div className="-mx-4 overflow-x-auto sm:mx-0">
+            <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-border">
                   <th className="pb-2 text-left font-medium text-muted-foreground text-xs">
@@ -391,6 +392,7 @@ export function DashboardPage() {
                 })}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </div>

@@ -30,6 +30,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { TableShell } from '@/components/shared/TableShell';
 import { ListTrackingRetentionBadge } from '@/components/shared/ListTrackingRetentionBadge';
 import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
@@ -786,7 +787,22 @@ export function ListsPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border border-border bg-card">
+      <TableShell
+        minWidthClass="min-w-[960px]"
+        footer={
+          data?.meta && data.meta.total > 0 ? (
+            <div className="flex flex-col gap-3 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted-foreground">
+                Page {data.meta.page} of {data.meta.totalPages} ·{' '}
+                {data.meta.total.toLocaleString()} total
+              </p>
+              {data.meta.totalPages > 1 && (
+                <Pagination meta={data.meta} onPageChange={setPage} />
+              )}
+            </div>
+          ) : undefined
+        }
+      >
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40">
@@ -971,19 +987,7 @@ export function ListsPage() {
             })}
           </tbody>
         </table>
-
-        {data?.meta && data.meta.total > 0 && (
-          <div className="flex items-center justify-between border-t border-border px-4 py-3">
-            <p className="text-xs text-muted-foreground">
-              Page {data.meta.page} of {data.meta.totalPages} ·{' '}
-              {data.meta.total.toLocaleString()} total
-            </p>
-            {data.meta.totalPages > 1 && (
-              <Pagination meta={data.meta} onPageChange={setPage} />
-            )}
-          </div>
-        )}
-      </div>
+      </TableShell>
 
       {/* Create / Edit dialog */}
       <Dialog

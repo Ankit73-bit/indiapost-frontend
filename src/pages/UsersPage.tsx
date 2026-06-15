@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { TableShell } from '@/components/shared/TableShell';
 import { getApiBaseUrl } from '@/lib/apiBase';
 import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { Pagination } from '@/components/shared/Pagination';
@@ -466,7 +467,15 @@ export function UsersPage() {
         </TabsList>
 
         <TabsContent value={roleFilter}>
-          <div className="rounded-lg border border-border bg-card">
+          <TableShell
+            footer={
+              data?.meta && data.meta.totalPages > 1 ? (
+                <div className="px-4 pb-4">
+                  <Pagination meta={data.meta} onPageChange={setPage} />
+                </div>
+              ) : undefined
+            }
+          >
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
@@ -518,12 +527,7 @@ export function UsersPage() {
                 ))}
               </tbody>
             </table>
-            {data?.meta && data.meta.totalPages > 1 && (
-              <div className="px-4 pb-4">
-                <Pagination meta={data.meta} onPageChange={setPage} />
-              </div>
-            )}
-          </div>
+          </TableShell>
         </TabsContent>
       </Tabs>
 

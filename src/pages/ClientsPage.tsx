@@ -15,6 +15,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { TableShell } from '@/components/shared/TableShell';
 import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { Pagination } from '@/components/shared/Pagination';
 import {
@@ -130,7 +131,15 @@ export function ClientsPage() {
       />
 
       {/* Table */}
-      <div className="rounded-lg border border-border bg-card">
+      <TableShell
+        footer={
+          data?.meta && data.meta.totalPages > 1 ? (
+            <div className="px-4 pb-4">
+              <Pagination meta={data.meta} onPageChange={setPage} />
+            </div>
+          ) : undefined
+        }
+      >
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/40">
@@ -270,13 +279,7 @@ export function ClientsPage() {
             ))}
           </tbody>
         </table>
-
-        {data?.meta && data.meta.totalPages > 1 && (
-          <div className="px-4 pb-4">
-            <Pagination meta={data.meta} onPageChange={setPage} />
-          </div>
-        )}
-      </div>
+      </TableShell>
 
       {/* Create / Edit Dialog */}
       <Dialog
