@@ -1,32 +1,16 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import {
-  Users,
-  List,
-  Package,
-  RefreshCw,
-  LogOut,
-  Mail,
-  UserCog,
-  UserCircle,
-} from 'lucide-react';
+import { LogOut, Mail, UserCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { SidebarNav } from '@/components/layout/SidebarNav';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { clearCredentials } from '@/store/authSlice';
 
-const NAV_ITEMS = [
-  { to: '/clients',  label: 'Clients',   icon: Users,           end: false, adminOnly: true,  customerHide: false },
-  { to: '/lists',    label: 'Lists',     icon: List,            end: false, adminOnly: false, customerHide: false },
-  { to: '/articles', label: 'Articles',  icon: Package,         end: false, adminOnly: false, customerHide: false },
-  { to: '/sync',     label: 'Sync',      icon: RefreshCw,       end: false, adminOnly: false, customerHide: true  },
-  { to: '/users',    label: 'Users',     icon: UserCog,         end: false, adminOnly: true,  customerHide: false },
-];
-
 export function Sidebar() {
-  const dispatch  = useAppDispatch();
-  const navigate  = useNavigate();
-  const user      = useAppSelector((s) => s.auth.user);
-  const isAdmin   = user?.role === 'admin';
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const user = useAppSelector((s) => s.auth.user);
+  const isAdmin = user?.role === 'admin';
 
   function handleLogout() {
     dispatch(clearCredentials());
@@ -37,7 +21,6 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-full min-h-0 w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-      {/* Home / dashboard */}
       <NavLink
         to="/"
         end
@@ -54,33 +37,8 @@ export function Sidebar() {
         <span className="text-sm font-semibold tracking-tight">IndiaPost CRM</span>
       </NavLink>
 
-      {/* Nav */}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
-        {NAV_ITEMS
-          .filter((item) => !item.adminOnly || isAdmin)
-          .filter((item) => !item.customerHide || isAdmin)
-          .map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
-                  'flex items-center gap-2.5 rounded px-3 py-2 text-sm transition-colors',
-                  isActive
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
-                )
-              }
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {label}
-            </NavLink>
-          ))
-        }
-      </nav>
+      <SidebarNav isAdmin={isAdmin} />
 
-      {/* Theme + User */}
       <div className="border-t border-sidebar-border px-3 py-3">
         <ThemeToggle
           variant="sidebar"
@@ -92,8 +50,12 @@ export function Sidebar() {
         >
           <UserCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
           <div className="min-w-0">
-            <p className="truncate text-xs font-medium text-sidebar-foreground">{displayName}</p>
-            <p className="truncate text-xs capitalize text-muted-foreground">{user?.role}</p>
+            <p className="truncate text-xs font-medium text-sidebar-foreground">
+              {displayName}
+            </p>
+            <p className="truncate text-xs capitalize text-muted-foreground">
+              {user?.role}
+            </p>
           </div>
         </button>
         <button

@@ -12,6 +12,8 @@ import { ArticlesPage }  from '@/pages/ArticlesPage';
 import { SyncPage }      from '@/pages/SyncPage';
 import { UsersPage }     from '@/pages/UsersPage';
 import { ProfilePage }   from '@/pages/ProfilePage';
+import { NoticeTemplatesPage } from '@/pages/notice/NoticeTemplatesPage';
+import { NoticeExcelPage } from '@/pages/notice/NoticeExcelPage';
 
 // Admin-only guard
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -57,6 +59,8 @@ export default function App() {
             <Route path="articles" element={<ArticlesPage />} />
             <Route path="profile"  element={<ProfilePage />} />
             <Route path="sync"     element={<SyncRoute><SyncPage /></SyncRoute>} />
+            <Route path="notice-generator/templates" element={<NoticeTemplatesPage />} />
+            <Route path="notice-generator/excel" element={<NoticeExcelPage />} />
 
             {/* Admin-only */}
             <Route path="clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
