@@ -36,7 +36,7 @@ export function Sidebar() {
   const displayName = user?.name || user?.email || '';
 
   return (
-    <aside className="flex h-screen w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+    <aside className="flex h-full min-h-0 w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
       {/* Home / dashboard */}
       <NavLink
         to="/"

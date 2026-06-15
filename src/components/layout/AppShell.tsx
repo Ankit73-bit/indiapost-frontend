@@ -12,9 +12,9 @@ export function AppShell() {
 
   return (
     <ZipDownloadProvider>
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-full min-h-0 overflow-hidden bg-background">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto">
+      <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         <OperationsBanner />
         <ZipDownloadBanner />
         <div className="mx-auto max-w-7xl px-6 py-6">

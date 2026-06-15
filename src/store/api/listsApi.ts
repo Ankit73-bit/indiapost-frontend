@@ -48,18 +48,41 @@ export const listsApi = baseApi.injectEndpoints({
       providesTags: (_r, _e, id) => [{ type: 'List', id }],
     }),
 
-    listNoticeTypes: build.query<string[], void>({
-      query: () => '/api/v1/lists/notice-types',
+    listNoticeTypes: build.query<string[], { clientId?: string } | void>({
+      query: (params) => ({
+        url: '/api/v1/lists/notice-types',
+        params: params?.clientId ? { clientId: params.clientId } : undefined,
+      }),
       transformResponse: (res: ApiSuccess<string[]>) => res.data,
-      providesTags: [{ type: 'List', id: 'NOTICE_TYPES' }],
+      providesTags: (_r, _e, arg) => [
+        { type: 'List', id: `NOTICE_TYPES_${arg?.clientId ?? 'ALL'}` },
+      ],
+    }),
+
+    listYears: build.query<number[], { clientId?: string } | void>({
+      query: (params) => ({
+        url: '/api/v1/lists/years',
+        params: params?.clientId ? { clientId: params.clientId } : undefined,
+      }),
+      transformResponse: (res: ApiSuccess<number[]>) => res.data,
+      providesTags: (_r, _e, arg) => [
+        { type: 'List', id: `YEARS_${arg?.clientId ?? 'ALL'}` },
+      ],
     }),
 
     createList: build.mutation<List, CreateListBody>({
       query: (body) => ({ url: '/api/v1/lists', method: 'POST', body }),
       transformResponse: (res: ApiSuccess<List>) => res.data,
-      invalidatesTags: [
+      invalidatesTags: (result) => [
         { type: 'List', id: 'LIST' },
-        { type: 'List', id: 'NOTICE_TYPES' },
+        { type: 'List', id: 'NOTICE_TYPES_ALL' },
+        { type: 'List', id: 'YEARS_ALL' },
+        ...(result
+          ? [
+              { type: 'List' as const, id: `NOTICE_TYPES_${result.clientId}` },
+              { type: 'List' as const, id: `YEARS_${result.clientId}` },
+            ]
+          : []),
       ],
     }),
 
@@ -73,7 +96,14 @@ export const listsApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { listId }) => [
         { type: 'List', id: listId },
         { type: 'List', id: 'LIST' },
-        { type: 'List', id: 'NOTICE_TYPES' },
+        { type: 'List', id: 'NOTICE_TYPES_ALL' },
+        { type: 'List', id: 'YEARS_ALL' },
+        ...(_r
+          ? [
+              { type: 'List' as const, id: `NOTICE_TYPES_${_r.clientId}` },
+              { type: 'List' as const, id: `YEARS_${_r.clientId}` },
+            ]
+          : []),
       ],
     }),
 
@@ -206,6 +236,7 @@ export const listsApi = baseApi.injectEndpoints({
 export const {
   useListListsQuery,
   useListNoticeTypesQuery,
+  useListYearsQuery,
   useGetListQuery,
   useCreateListMutation,
   useUpdateListMutation,

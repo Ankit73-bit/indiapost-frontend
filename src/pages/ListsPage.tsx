@@ -7,6 +7,7 @@ import {
   X,
   ArrowDownWideNarrow,
   ArrowUpWideNarrow,
+  Download,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -36,6 +37,7 @@ import { ClientFilterSelect } from '@/components/shared/ClientFilterSelect';
 import { NoticeTypeCombobox } from '@/components/shared/NoticeTypeCombobox';
 import { OperationProgressBar } from '@/components/shared/OperationProgressBar';
 import { ListActionsMenu } from '@/components/lists/ListActionsMenu';
+import { ExportListsDialog } from '@/components/lists/ExportListsDialog';
 import { toast } from '@/lib/toast';
 import { downloadListExport } from '@/lib/exportList';
 import {
@@ -61,6 +63,7 @@ import { useListClientsQuery } from '@/store/api/clientsApi';
 import {
   listsApi,
   useListNoticeTypesQuery,
+  useListYearsQuery,
   useCreateListMutation,
   useUpdateListMutation,
   useArchiveListMutation,
@@ -160,6 +163,7 @@ export function ListsPage() {
   const [cancelError, setCancelError] = useState('');
   const [uploadError, setUploadError] = useState('');
   const [exportingListId, setExportingListId] = useState<string | null>(null);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [opsPollForced, setOpsPollForced] = useState(false);
 
   useEffect(() => {
@@ -186,11 +190,19 @@ export function ListsPage() {
     : undefined;
   const customerInactive = Boolean(customerClient && !customerClient.isActive);
 
-  const { data: noticeTypesData } = useListNoticeTypesQuery();
-  const noticeTypeOptions = useMemo(
-    () => mergeNoticeTypes(noticeTypesData),
-    [noticeTypesData],
+  const { data: noticeTypesData } = useListNoticeTypesQuery(
+    clientIdFilter ? { clientId: clientIdFilter } : undefined,
   );
+  const { data: listYearsData } = useListYearsQuery(
+    clientIdFilter ? { clientId: clientIdFilter } : undefined,
+  );
+  const noticeTypeOptions = useMemo(() => {
+    const types = noticeTypesData ?? [];
+    if (clientIdFilter) {
+      return [...new Set(types.map((t) => t.trim().toUpperCase()).filter(Boolean))].sort();
+    }
+    return mergeNoticeTypes(types);
+  }, [noticeTypesData, clientIdFilter]);
 
   const { data: importingOps } = usePollListsByStatus(
     { clientId: clientIdFilter, status: 'IMPORTING', limit: 50 },
@@ -245,9 +257,13 @@ export function ListsPage() {
   }, [opsPollForced, importingLists.length, syncingLists.length]);
 
   const yearOptions = useMemo(() => {
-    const y = currentYear();
-    return Array.from({ length: 8 }, (_, i) => y - i);
-  }, []);
+    const current = currentYear();
+    const years = new Set<number>([current]);
+    // Always offer a few recent years for new lists, even before data exists.
+    for (let i = 1; i <= 3; i++) years.add(current - i);
+    for (const y of listYearsData ?? []) years.add(y);
+    return [...years].sort((a, b) => b - a);
+  }, [listYearsData]);
 
   const hasFilters = Boolean(
     search ||
@@ -337,6 +353,12 @@ export function ListsPage() {
   const watchedNoticeType = watch('noticeType');
   const watchedNoticeName = watch('noticeName');
   const watchedNoticeDate = watch('noticeDate');
+
+  const formClientId = editing?.clientId ?? watchedClientId;
+  const { data: formNoticeTypesData } = useListNoticeTypesQuery(
+    formClientId ? { clientId: formClientId } : undefined,
+    { skip: !dialogOpen || !formClientId },
+  );
 
   const generatedSlugPreview = useMemo(() => {
     const clientId = editing?.clientId ?? watchedClientId;
@@ -567,6 +589,14 @@ export function ListsPage() {
                 onChange={setClientFilter}
               />
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExportDialogOpen(true)}
+              disabled={customerInactive || activeClients.length === 0}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" /> Export
+            </Button>
             <Button
               size="sm"
               onClick={openCreate}
@@ -1013,8 +1043,10 @@ export function ListsPage() {
               onChange={(v) =>
                 setValue('noticeType', v, { shouldValidate: true })
               }
-              knownTypes={noticeTypesData}
+              knownTypes={formNoticeTypesData}
+              clientScoped
               error={errors.noticeType?.message}
+              disabled={!formClientId}
             />
 
             <div className="space-y-1.5">
@@ -1165,6 +1197,24 @@ export function ListsPage() {
         entityName={syncTarget?.name ?? ''}
         confirmLabel="Start sync"
         isLoading={triggeringSync}
+      />
+
+      <ExportListsDialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        isAdmin={isAdmin}
+        clients={activeClients}
+        defaultClientId={isAdmin ? clientIdFilter : authUser?.clientId}
+        noticeTypeOptions={noticeTypeOptions}
+        yearOptions={yearOptions}
+        currentFilters={{
+          clientId: clientIdFilter ?? (isAdmin ? undefined : authUser?.clientId),
+          year: showAllYears ? undefined : Number(filterYear),
+          month: filterMonth ? Number(filterMonth) : undefined,
+          noticeType: filterNoticeType || undefined,
+          includeArchived: showArchivedOnly,
+        }}
+        onSuccess={() => toast.success('Export downloaded')}
       />
     </div>
   );

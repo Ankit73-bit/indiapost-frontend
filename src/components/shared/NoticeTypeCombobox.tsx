@@ -16,18 +16,28 @@ interface NoticeTypeComboboxProps {
   value: string;
   onChange: (value: string) => void;
   knownTypes?: string[];
+  /** When true, only shows types used by the selected client (no global presets). */
+  clientScoped?: boolean;
   error?: string;
   required?: boolean;
+  disabled?: boolean;
 }
 
 export function NoticeTypeCombobox({
   value,
   onChange,
   knownTypes = [],
+  clientScoped = false,
   error,
   required = true,
+  disabled = false,
 }: NoticeTypeComboboxProps) {
-  const options = useMemo(() => mergeNoticeTypes(knownTypes), [knownTypes]);
+  const options = useMemo(() => {
+    if (clientScoped) {
+      return [...new Set(knownTypes.map((t) => t.trim().toUpperCase()).filter(Boolean))].sort();
+    }
+    return mergeNoticeTypes(knownTypes);
+  }, [knownTypes, clientScoped]);
   const normalizedValue = value.trim().toUpperCase();
   const valueInOptions = normalizedValue
     ? options.includes(normalizedValue)
@@ -55,6 +65,7 @@ export function NoticeTypeCombobox({
       </Label>
       <Select
         value={selectValue}
+        disabled={disabled}
         onValueChange={(v) => {
           if (v === CUSTOM_OPTION) {
             setCustomMode(true);
@@ -88,8 +99,11 @@ export function NoticeTypeCombobox({
       )}
 
       <p className="text-xs text-muted-foreground">
-        Pick a preset or add a custom type — new types appear in the filter
-        after save.
+        {clientScoped
+          ? options.length > 0
+            ? 'Types previously used for this client, or add a new custom type.'
+            : 'No notice types yet for this client — add a custom type below.'
+          : 'Pick a preset or add a custom type — new types appear in the filter after save.'}
       </p>
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
