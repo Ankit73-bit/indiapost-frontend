@@ -419,10 +419,18 @@ export interface TriggerSyncResponse {
   message: string;
 }
 
+export interface SyncableArticleFilters {
+  status?: NormalizedStatus;
+  search?: string;
+  syncFailed?: boolean;
+  nonTerminal?: boolean;
+}
+
 export interface TriggerArticlesBody {
   clientId: string;
   listId: string;
-  articleIds: string[];
+  articleIds?: string[];
+  syncFilters?: SyncableArticleFilters;
 }
 
 export interface TriggerArticlesResponse {

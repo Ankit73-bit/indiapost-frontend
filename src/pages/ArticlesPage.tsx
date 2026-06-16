@@ -940,14 +940,26 @@ function ArticlesListView({
   }
 
   async function handleSyncSelected() {
-    const articleIds = [...selectedSyncIds];
-    if (articleIds.length === 0) return;
+    if (selectedSyncIds.size === 0) return;
     try {
-      const result = await triggerArticlesSync({
-        clientId,
-        listId,
-        articleIds,
-      }).unwrap();
+      const result = await triggerArticlesSync(
+        allListSyncableSelected
+          ? {
+              clientId,
+              listId,
+              syncFilters: {
+                status: statusFilter,
+                search: search || undefined,
+                syncFailed: syncFailedOnly || undefined,
+                nonTerminal: true,
+              },
+            }
+          : {
+              clientId,
+              listId,
+              articleIds: [...selectedSyncIds],
+            },
+      ).unwrap();
       toast.success(
         `Sync started for ${result.enqueued.toLocaleString()} article${result.enqueued !== 1 ? 's' : ''}`,
       );
