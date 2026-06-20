@@ -12,7 +12,10 @@ import { ArticlesPage }  from '@/pages/ArticlesPage';
 import { SyncPage }      from '@/pages/SyncPage';
 import { UsersPage }     from '@/pages/UsersPage';
 import { ProfilePage }   from '@/pages/ProfilePage';
-import { NoticeTemplatesPage } from '@/pages/notice/NoticeTemplatesPage';
+import { NoticeGeneratorLayout } from '@/components/notice/NoticeGeneratorLayout';
+import { NoticeTemplatesListPage } from '@/pages/notice/NoticeTemplatesListPage';
+import { NoticeTemplateCreatePage } from '@/pages/notice/NoticeTemplateCreatePage';
+import { NoticeTemplateDetailPage } from '@/pages/notice/NoticeTemplateDetailPage';
 import { NoticeExcelPage } from '@/pages/notice/NoticeExcelPage';
 
 // Admin-only guard
@@ -59,8 +62,14 @@ export default function App() {
             <Route path="articles" element={<ArticlesPage />} />
             <Route path="profile"  element={<ProfilePage />} />
             <Route path="sync"     element={<SyncRoute><SyncPage /></SyncRoute>} />
-            <Route path="notice-generator/templates" element={<NoticeTemplatesPage />} />
-            <Route path="notice-generator/excel" element={<NoticeExcelPage />} />
+
+            <Route path="notice-generator" element={<NoticeGeneratorLayout />}>
+              <Route index element={<Navigate to="templates" replace />} />
+              <Route path="templates" element={<NoticeTemplatesListPage />} />
+              <Route path="templates/new" element={<NoticeTemplateCreatePage />} />
+              <Route path="templates/:templateId" element={<NoticeTemplateDetailPage />} />
+              <Route path="excel" element={<NoticeExcelPage />} />
+            </Route>
 
             {/* Admin-only */}
             <Route path="clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />

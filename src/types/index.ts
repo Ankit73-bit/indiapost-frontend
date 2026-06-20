@@ -443,6 +443,16 @@ export interface BulkRetryResponse {
   syncJobIds: string[];
 }
 
+export interface FailedArticleRetryFilters {
+  clientId?: string;
+  listId?: string;
+  search?: string;
+}
+
+export type BulkRetryBody =
+  | { articleIds: string[]; retryFilters?: never }
+  | { retryFilters: FailedArticleRetryFilters; articleIds?: never };
+
 export interface FailedArticle {
   _id: string;
   articleId: string;
@@ -482,4 +492,99 @@ export interface ListSyncJobsQuery {
   listOnly?: boolean;
   page?: number;
   limit?: number;
+}
+
+// ─── Notice Generator ─────────────────────────────────────────────────────────
+
+export type NoticeVersionStatus = 'draft' | 'active' | 'inactive';
+
+export interface NoticeTableColumnConfig {
+  name: string;
+  format: 'str' | 'int' | 'float' | 'date' | 'time';
+}
+
+export interface NoticeTableConfig {
+  id: string;
+  placeholder_pattern: string;
+  id_column: string;
+  max_rows: number;
+  row_count_field?: string;
+  rotation?: boolean;
+  columns: NoticeTableColumnConfig[];
+}
+
+export interface NoticeListFieldConfig {
+  field_name: string;
+  placeholder: string;
+  max_items?: number;
+}
+
+export type DateOutputStyle = 'dd-mm-yyyy' | 'dd-mmm-yyyy';
+
+export interface VariableValidationResult {
+  detected: string[];
+  configured: string[];
+  matched: string[];
+  missingInConfig: string[];
+  unusedInConfig: string[];
+  isValid: boolean;
+}
+
+export interface NoticeConfig {
+  notice_id: string;
+  notice_name: string;
+  with_header: boolean;
+  id_field: string;
+  sort_field?: string;
+  typst_template?: string;
+  additional_fields?: string[];
+  date_fields?: string[];
+  date_output_style?: DateOutputStyle;
+  decimal_fields?: string[];
+  list_fields?: NoticeListFieldConfig[];
+  tables?: NoticeTableConfig[];
+  default_password?: string;
+}
+
+export interface NoticeVersionMetadata {
+  variables: string[];
+  images: string[];
+  variableValidation?: VariableValidationResult;
+  description?: string;
+  createdBy?: string;
+}
+
+export interface NoticeTemplateVersion {
+  version: string;
+  status: NoticeVersionStatus;
+  noticeConfig: NoticeConfig;
+  templateMap: Record<string, string>;
+  storagePrefix: string;
+  fileNames: string[];
+  metadata: NoticeVersionMetadata;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NoticeTemplate {
+  _id: string;
+  clientId: string;
+  noticeId: string;
+  noticeName: string;
+  activeVersion?: string;
+  versions: NoticeTemplateVersion[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ListNoticeTemplatesQuery {
+  clientId: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface CreateNoticeTemplateBody {
+  clientId: string;
+  noticeConfig: NoticeConfig;
+  description?: string;
 }

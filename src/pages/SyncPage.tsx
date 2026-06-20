@@ -34,6 +34,7 @@ import {
   useTriggerSyncMutation,
   useListSyncJobsQuery,
   useListFailedArticlesQuery,
+  useLazyListFailedArticleIdsQuery,
   useListTrackingExpiredArticlesQuery,
   useRetryFailedArticleMutation,
   useBulkRetryFailedArticlesMutation,
@@ -105,13 +106,20 @@ export function SyncPage() {
   const [selectedFailedIds, setSelectedFailedIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [allFailedSelected, setAllFailedSelected] = useState(false);
+  const [selectingAllFailed, setSelectingAllFailed] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => setFailedSearch(failedSearchInput.trim()), 300);
+    const timer = setTimeout(
+      () => setFailedSearch(failedSearchInput.trim()),
+      300,
+    );
     return () => clearTimeout(timer);
   }, [failedSearchInput]);
 
-  const failedFilterKey = [filterClientId, filterListId, failedSearch].join('|');
+  const failedFilterKey = [filterClientId, filterListId, failedSearch].join(
+    '|',
+  );
   const expiredFilterKey = failedFilterKey;
 
   const [pageByKey, setPageByKey] = useState<Record<string, number>>({});
@@ -183,6 +191,11 @@ export function SyncPage() {
     { pollingInterval: shouldPollJobs ? 3000 : 0 },
   );
 
+  useEffect(() => {
+    setSelectedFailedIds(new Set());
+    setAllFailedSelected(false);
+  }, [failedFilterKey]);
+
   const { data: failedData, isLoading: failedLoading } =
     useListFailedArticlesQuery(
       {
@@ -194,10 +207,6 @@ export function SyncPage() {
       },
       { pollingInterval: shouldPollJobs ? 3000 : 0 },
     );
-
-  useEffect(() => {
-    setSelectedFailedIds(new Set());
-  }, [failedFilterKey, failedPage]);
 
   const { data: expiredData, isLoading: expiredLoading } =
     useListTrackingExpiredArticlesQuery({
@@ -239,11 +248,16 @@ export function SyncPage() {
   const [retryArticle] = useRetryFailedArticleMutation();
   const [bulkRetry, { isLoading: bulkRetrying }] =
     useBulkRetryFailedArticlesMutation();
+  const [fetchFailedIds] = useLazyListFailedArticleIdsQuery();
 
   const failedRows = failedData?.data ?? [];
   const allFailedPageSelected =
     failedRows.length > 0 &&
     failedRows.every((fa) => selectedFailedIds.has(fa.articleId));
+  const failedSelectionCount = allFailedSelected
+    ? (failedData?.meta?.total ?? selectedFailedIds.size)
+    : selectedFailedIds.size;
+  const failedHeaderChecked = allFailedSelected || allFailedPageSelected;
 
   const hasJobFilters = Boolean(
     filterClientId ||
@@ -303,6 +317,7 @@ export function SyncPage() {
   }
 
   function toggleFailedSelection(articleId: string) {
+    setAllFailedSelected(false);
     setSelectedFailedIds((prev) => {
       const next = new Set(prev);
       if (next.has(articleId)) next.delete(articleId);
@@ -312,6 +327,7 @@ export function SyncPage() {
   }
 
   function toggleAllFailedOnPage() {
+    setAllFailedSelected(false);
     setSelectedFailedIds((prev) => {
       const next = new Set(prev);
       if (allFailedPageSelected) {
@@ -323,15 +339,59 @@ export function SyncPage() {
     });
   }
 
+  async function handleToggleAllFailed() {
+    if (selectingAllFailed) return;
+
+    if (allFailedSelected || allFailedPageSelected) {
+      setSelectedFailedIds(new Set());
+      setAllFailedSelected(false);
+      return;
+    }
+
+    const totalFailed = failedData?.meta?.total ?? 0;
+    if (totalFailed > failedRows.length) {
+      setSelectingAllFailed(true);
+      try {
+        const result = await fetchFailedIds({
+          clientId: filterClientId || undefined,
+          listId: filterListId || undefined,
+          search: failedSearch || undefined,
+        }).unwrap();
+        setSelectedFailedIds(new Set(result.articleIds));
+        setAllFailedSelected(result.total > 0);
+        if (result.total === 0) {
+          toast.info('No failed articles match the current filters');
+        }
+      } catch {
+        toast.error('Failed to select all failed articles');
+      } finally {
+        setSelectingAllFailed(false);
+      }
+      return;
+    }
+
+    toggleAllFailedOnPage();
+  }
+
   async function handleBulkRetry() {
-    const articleIds = [...selectedFailedIds];
-    if (articleIds.length === 0) return;
+    if (failedSelectionCount === 0) return;
     try {
-      const result = await bulkRetry(articleIds).unwrap();
+      const result = await bulkRetry(
+        allFailedSelected
+          ? {
+              retryFilters: {
+                clientId: filterClientId || undefined,
+                listId: filterListId || undefined,
+                search: failedSearch || undefined,
+              },
+            }
+          : { articleIds: [...selectedFailedIds] },
+      ).unwrap();
       toast.success(
         `Retry enqueued for ${result.enqueued.toLocaleString()} article${result.enqueued !== 1 ? 's' : ''}`,
       );
       setSelectedFailedIds(new Set());
+      setAllFailedSelected(false);
       setSyncPollForced(true);
       window.setTimeout(() => setSyncPollForced(false), 12000);
     } catch (err) {
@@ -616,8 +676,8 @@ export function SyncPage() {
 
         <TabsContent value="failed">
           <p className="mb-3 text-sm text-muted-foreground">
-            Articles where the last sync attempt failed. Select rows and retry in
-            bulk, or use Trigger Sync on the list to retry all non-terminal
+            Articles where the last sync attempt failed. Select rows and retry
+            in bulk, or use Trigger Sync on the list to retry all non-terminal
             articles.
           </p>
           <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -633,7 +693,7 @@ export function SyncPage() {
                 }}
               />
             </div>
-            {selectedFailedIds.size > 0 && (
+            {failedSelectionCount > 0 && (
               <Button
                 size="sm"
                 className="gap-1.5"
@@ -645,7 +705,7 @@ export function SyncPage() {
                 ) : (
                   <RotateCcw className="h-3.5 w-3.5" />
                 )}
-                Retry selected ({selectedFailedIds.size})
+                Retry selected ({failedSelectionCount.toLocaleString()})
               </Button>
             )}
             {failedData?.meta && (
@@ -674,10 +734,18 @@ export function SyncPage() {
                     <input
                       type="checkbox"
                       className="h-3.5 w-3.5 rounded border-border"
-                      checked={allFailedPageSelected}
-                      onChange={toggleAllFailedOnPage}
-                      disabled={failedRows.length === 0}
-                      aria-label="Select all failed articles on this page"
+                      checked={failedHeaderChecked}
+                      onChange={handleToggleAllFailed}
+                      disabled={
+                        failedRows.length === 0 ||
+                        selectingAllFailed ||
+                        failedLoading
+                      }
+                      aria-label={
+                        failedData?.meta && failedData.meta.total > failedRows.length
+                          ? 'Select all failed articles matching filters'
+                          : 'Select all failed articles on this page'
+                      }
                     />
                   </th>
                   <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
@@ -726,7 +794,10 @@ export function SyncPage() {
                       <input
                         type="checkbox"
                         className="h-3.5 w-3.5 rounded border-border"
-                        checked={selectedFailedIds.has(fa.articleId)}
+                        checked={
+                          allFailedSelected ||
+                          selectedFailedIds.has(fa.articleId)
+                        }
                         onChange={() => toggleFailedSelection(fa.articleId)}
                         aria-label={`Select ${fa.articleNumber}`}
                       />

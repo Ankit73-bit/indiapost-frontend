@@ -8,6 +8,7 @@ import type {
   TriggerSyncResponse,
   TriggerArticlesBody,
   TriggerArticlesResponse,
+  BulkRetryBody,
   BulkRetryResponse,
   ListSyncJobsQuery,
   PaginationMeta,
@@ -109,11 +110,28 @@ export const syncApi = baseApi.injectEndpoints({
       ],
     }),
 
-    bulkRetryFailedArticles: build.mutation<BulkRetryResponse, string[]>({
-      query: (articleIds) => ({
+    listFailedArticleIds: build.query<
+      { articleIds: string[]; total: number },
+      {
+        clientId?: string;
+        listId?: string;
+        search?: string;
+      }
+    >({
+      query: (params) => ({
+        url: '/api/v1/sync/failed/ids',
+        params,
+      }),
+      transformResponse: (
+        res: ApiSuccess<{ articleIds: string[]; total: number }>,
+      ) => res.data,
+    }),
+
+    bulkRetryFailedArticles: build.mutation<BulkRetryResponse, BulkRetryBody>({
+      query: (body) => ({
         url: '/api/v1/sync/failed/retry-bulk',
         method: 'POST',
-        body: { articleIds },
+        body,
       }),
       transformResponse: (res: ApiSuccess<BulkRetryResponse>) => res.data,
       invalidatesTags: [
@@ -155,5 +173,7 @@ export const {
   useListFailedArticlesQuery,
   useRetryFailedArticleMutation,
   useBulkRetryFailedArticlesMutation,
+  useListFailedArticleIdsQuery,
+  useLazyListFailedArticleIdsQuery,
   useListTrackingExpiredArticlesQuery,
 } = syncApi;

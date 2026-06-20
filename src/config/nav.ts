@@ -1,7 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   FileSpreadsheet,
-  FileText,
   Route,
   ScrollText,
   UserCog,
@@ -88,9 +87,3 @@ export function filterNavItems(items: NavItem[], isAdmin: boolean): NavItem[] {
     })
     .filter((item): item is NavItem => item !== null);
 }
-
-/** Icons used on notice generator placeholder pages */
-export const NOTICE_NAV_ICONS = {
-  template: FileText,
-  excel: FileSpreadsheet,
-} as const;
