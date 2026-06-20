@@ -38,12 +38,12 @@ type PwForm = z.infer<typeof pwSchema>;
 
 function Card({ icon: Icon, title, children }: { icon: React.ElementType; title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <div className="rounded-md bg-muted p-1.5">
-          <Icon className="h-4 w-4 text-muted-foreground" />
+    <div className="rounded-xl border border-border/60 bg-card shadow-sm p-6 hover:shadow-md transition-shadow">
+      <div className="mb-5 flex items-center gap-3">
+        <div className="rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 p-2.5 ring-1 ring-primary/20">
+          <Icon className="h-5 w-5 text-primary" />
         </div>
-        <h2 className="text-sm font-semibold">{title}</h2>
+        <h2 className="text-base font-bold text-foreground">{title}</h2>
       </div>
       {children}
     </div>

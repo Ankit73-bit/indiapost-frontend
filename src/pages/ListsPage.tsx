@@ -578,41 +578,48 @@ export function ListsPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setExportDialogOpen(true)}
-          disabled={customerInactive || activeClients.length === 0}
-        >
-          <Download className="mr-1.5 h-3.5 w-3.5" /> Export
-        </Button>
-        <Button
-          size="sm"
-          onClick={openCreate}
-          disabled={customerInactive || activeClients.length === 0}
-        >
-          <Plus className="mr-1.5 h-3.5 w-3.5" /> New List
-        </Button>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Mailing Lists</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Create and manage postal delivery lists</p>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExportDialogOpen(true)}
+            disabled={customerInactive || activeClients.length === 0}
+            className="gap-2"
+          >
+            <Download className="h-4 w-4" /> Export
+          </Button>
+          <Button
+            size="sm"
+            onClick={openCreate}
+            disabled={customerInactive || activeClients.length === 0}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" /> New List
+          </Button>
+        </div>
       </div>
 
       {customerInactive && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Your client account is deactivated. Lists are hidden until an admin
-          reactivates the client.
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm font-medium text-destructive">
+          Your client account is deactivated. Lists are hidden until an admin reactivates the client.
         </div>
       )}
 
       {importingLists.length > 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <p className="flex items-center gap-1.5 font-medium">
+        <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 dark:bg-amber-950/20 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+          <p className="flex items-center gap-1.5 font-semibold">
             Import in progress ({importingLists.length} list
             {importingLists.length !== 1 ? 's' : ''})
             <HelpTooltip content="Processing runs on the server — refreshing or closing this page does not stop it. Progress updates every few seconds below." />
           </p>
           {importingLists.some((l) => isProgressStuck(l.importProgress)) && (
-            <p className="mt-1 text-xs text-amber-800/90 font-medium">
+            <p className="mt-1.5 text-xs font-medium opacity-90">
               Progress stalled — use Cancel in the row menu to reset and upload again.
             </p>
           )}
@@ -620,8 +627,8 @@ export function ListsPage() {
       )}
 
       {syncingLists.length > 0 && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <p className="flex items-center gap-1.5 font-medium">
+        <div className="rounded-xl border border-blue-200/60 bg-blue-50/50 dark:bg-blue-950/20 px-4 py-3 text-sm text-blue-900 dark:text-blue-200">
+          <p className="flex items-center gap-1.5 font-semibold">
             Sync in progress ({syncingLists.length} list
             {syncingLists.length !== 1 ? 's' : ''})
             <HelpTooltip content="India Post tracking sync runs on the server. Progress updates every few seconds below." />
@@ -630,23 +637,23 @@ export function ListsPage() {
       )}
 
       {uploadError && (
-        <div className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm font-medium text-destructive">
           {uploadError}
         </div>
       )}
 
       {/* Search & filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[240px] flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/60" />
           <Input
             placeholder="Search by list name, client…"
-            className="pl-8"
+            className="pl-10 bg-muted/30 border-border/50 focus:bg-background transition-colors"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
           />
           {isFetching && !isLoading && (
-            <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
           )}
         </div>
 

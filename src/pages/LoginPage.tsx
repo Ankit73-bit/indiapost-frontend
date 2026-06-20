@@ -52,73 +52,92 @@ export function LoginPage() {
       : null;
 
   return (
-    <div className="relative flex min-h-full items-center justify-center overflow-y-auto bg-muted/30 px-4 py-8">
-      <ThemeToggle className="absolute right-4 top-4 h-8 w-8 p-0" />
+    <div className="relative flex min-h-full items-center justify-center overflow-y-auto bg-gradient-to-br from-background via-background to-muted/20 px-4 py-8">
+      <ThemeToggle className="absolute right-4 top-4 h-9 w-9 p-1.5 rounded-lg border border-border hover:bg-muted/50 transition-colors" />
       <div className="w-full max-w-sm">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="mb-3 flex justify-center">
-            <Mail className="h-8 w-8 text-primary" />
+        <div className="mb-10 text-center">
+          <div className="mb-4 flex justify-center">
+            <div className="rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 p-3 ring-1 ring-primary/20">
+              <Mail className="h-8 w-8 text-primary" />
+            </div>
           </div>
-          <h1 className="text-xl font-semibold">IndiaPost CRM</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Sign in to your account
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            IndiaPost CRM
+          </h1>
+          <p className="mt-2 text-base text-muted-foreground">
+            Enterprise postal service management
           </p>
         </div>
 
         {/* Card */}
-        <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  className="pl-8"
-                  {...register('email')}
-                />
+        <div className="rounded-xl border border-border bg-card shadow-xl shadow-black/5">
+          <div className="px-7 py-8 space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium">
+                  Email Address
+                </Label>
+                <div className="relative group">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/50 group-focus-within:text-primary transition-colors" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    className="pl-10 bg-muted/50 border-border/50 focus:border-primary/50 focus:bg-background transition-all"
+                    {...register('email')}
+                  />
+                </div>
+                {errors.email && (
+                  <p className="text-xs font-medium text-destructive mt-1">
+                    {errors.email.message}
+                  </p>
+                )}
               </div>
-              {errors.email && (
-                <p className="text-xs text-destructive">
-                  {errors.email.message}
-                </p>
+
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </Label>
+                <div className="relative group">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-primary/50 group-focus-within:text-primary transition-colors" />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    className="pl-10 bg-muted/50 border-border/50 focus:border-primary/50 focus:bg-background transition-all"
+                    {...register('password')}
+                  />
+                </div>
+                {errors.password && (
+                  <p className="text-xs font-medium text-destructive mt-1">
+                    {errors.password.message}
+                  </p>
+                )}
+              </div>
+
+              {apiError && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm font-medium text-destructive">
+                  {apiError}
+                </div>
               )}
-            </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Lock className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  className="pl-8"
-                  {...register('password')}
-                />
-              </div>
-              {errors.password && (
-                <p className="text-xs text-destructive">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
-
-            {apiError && (
-              <div className="rounded border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {apiError}
-              </div>
-            )}
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Sign in
-            </Button>
-          </form>
+              <Button 
+                type="submit" 
+                className="w-full mt-6 h-11 text-base font-semibold rounded-lg hover:shadow-lg hover:shadow-primary/20 transition-all duration-200" 
+                disabled={isLoading}
+              >
+                {isLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                {isLoading ? 'Signing in...' : 'Sign in'}
+              </Button>
+            </form>
+          </div>
         </div>
+
+        {/* Footer */}
+        <p className="mt-8 text-center text-xs text-muted-foreground">
+          Enterprise postal management system
+        </p>
       </div>
     </div>
   );

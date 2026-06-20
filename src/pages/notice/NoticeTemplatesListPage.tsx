@@ -66,42 +66,47 @@ export function NoticeTemplatesListPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or ID…"
-              className="pl-9"
-            />
-          </div>
-          <div className="flex rounded-lg border border-border p-0.5">
-            {(['all', 'active', 'draft'] as const).map((f) => (
-              <button
-                key={f}
-                type="button"
-                onClick={() => setStatusFilter(f)}
-                className={cn(
-                  'rounded-md px-3 py-1 text-xs font-medium capitalize transition-colors',
-                  statusFilter === f
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Notice Templates</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage postal notice templates and versions</p>
         </div>
-        <Button asChild disabled={!clientId}>
+        <Button asChild disabled={!clientId} className="gap-2">
           <Link to={createUrl}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="h-4 w-4" />
             Create template
           </Link>
         </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[240px] flex-1">
+          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground/60" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name or ID…"
+            className="pl-10 bg-muted/30 border-border/50 focus:bg-background transition-colors"
+          />
+        </div>
+        <div className="flex rounded-lg border border-border/60 bg-muted/20 p-1">
+          {(['all', 'active', 'draft'] as const).map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setStatusFilter(f)}
+              className={cn(
+                'rounded-md px-3 py-1.5 text-xs font-semibold capitalize transition-all',
+                statusFilter === f
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
       </div>
 
       <TableShell
@@ -115,13 +120,13 @@ export function NoticeTemplatesListPage() {
       >
         <table className="w-full min-w-[800px] text-sm">
           <thead>
-            <tr className="border-b border-border text-left text-muted-foreground">
-              <th className="px-4 py-3 font-medium">Template name</th>
-              <th className="px-4 py-3 font-medium">Notice ID</th>
-              <th className="px-4 py-3 font-medium">Default version</th>
-              <th className="px-4 py-3 font-medium">Status</th>
-              <th className="px-4 py-3 font-medium">Versions</th>
-              <th className="px-4 py-3 font-medium">Last updated</th>
+            <tr className="border-b border-border/50 bg-muted/20 text-left">
+              <th className="px-4 py-3 font-semibold text-foreground text-xs uppercase tracking-wider">Template name</th>
+              <th className="px-4 py-3 font-semibold text-foreground text-xs uppercase tracking-wider">Notice ID</th>
+              <th className="px-4 py-3 font-semibold text-foreground text-xs uppercase tracking-wider">Default version</th>
+              <th className="px-4 py-3 font-semibold text-foreground text-xs uppercase tracking-wider">Status</th>
+              <th className="px-4 py-3 font-semibold text-foreground text-xs uppercase tracking-wider">Versions</th>
+              <th className="px-4 py-3 font-semibold text-foreground text-xs uppercase tracking-wider">Last updated</th>
               <th className="px-4 py-3 w-12" />
             </tr>
           </thead>

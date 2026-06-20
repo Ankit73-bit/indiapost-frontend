@@ -1055,12 +1055,12 @@ function ArticlesListView({
       />
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[240px] flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/60" />
           <Input
             placeholder={searchPlaceholder}
-            className="pl-8"
+            className="pl-10 bg-muted/30 border-border/50 focus:bg-background transition-colors"
             value={searchInput}
             onChange={(e) => {
               setSearchInput(e.target.value);
@@ -1069,7 +1069,7 @@ function ArticlesListView({
             aria-label={searchPlaceholder}
           />
           {isFetching && !isLoading && (
-            <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
           )}
         </div>
 

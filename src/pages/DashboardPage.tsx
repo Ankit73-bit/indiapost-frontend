@@ -39,17 +39,17 @@ function StatCard({
 }) {
   return (
     <div
-      className={`rounded-lg border border-border bg-card p-4 ${onClick ? 'cursor-pointer hover:bg-muted/20 transition-colors' : ''}`}
+      className={`group rounded-xl border border-border/60 bg-card p-5 shadow-sm hover:shadow-md transition-all ${onClick ? 'cursor-pointer hover:border-primary/30 hover:bg-gradient-to-br hover:from-card hover:to-primary/5' : ''}`}
       onClick={onClick}
     >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums">{value}</p>
-          {sub && <p className="mt-0.5 text-xs text-muted-foreground">{sub}</p>}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{label}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-foreground tabular-nums">{value}</p>
+          {sub && <p className="mt-1 text-xs font-medium text-muted-foreground">{sub}</p>}
         </div>
-        <div className="rounded-md bg-muted p-2">
-          <Icon className="h-4 w-4 text-muted-foreground" />
+        <div className="rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 p-3 ring-1 ring-primary/20 group-hover:ring-primary/30 transition-all shrink-0">
+          <Icon className="h-5 w-5 text-primary group-hover:text-primary transition-colors" />
         </div>
       </div>
     </div>
@@ -208,9 +208,9 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* ── Article status breakdown ── */}
         {statsData && statsData.totalArticles > 0 && (
-          <div className="rounded-lg border border-border bg-card p-4">
-            <h2 className="mb-3 text-sm font-semibold">Article Status Breakdown</h2>
-            <div className="space-y-2">
+          <div className="rounded-xl border border-border/60 bg-card p-6 shadow-sm">
+            <h2 className="mb-5 text-lg font-bold text-foreground">Article Status Breakdown</h2>
+            <div className="space-y-3">
               {Object.entries(statsData.byStatus)
                 .sort(([, a], [, b]) => (b ?? 0) - (a ?? 0))
                 .map(([status, count]) => {
@@ -221,22 +221,22 @@ export function DashboardPage() {
                         )
                       : 0;
                   return (
-                    <div key={status} className="flex items-center gap-3">
+                    <div key={status} className="flex items-center gap-4">
                       <ArticleStatusBadge
                         status={status as NormalizedStatus}
-                        className="w-32 justify-center"
+                        className="w-28 justify-center flex-shrink-0"
                       />
-                      <div className="flex-1 rounded-full bg-muted h-1.5 overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
+                      <div className="flex-1">
+                        <div className="rounded-full bg-muted/60 h-2 overflow-hidden ring-1 ring-border/30">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all shadow-sm"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
                       </div>
-                      <span className="w-16 text-right font-mono text-xs text-muted-foreground">
+                      <span className="w-20 text-right font-mono text-xs font-semibold text-foreground">
                         {(count ?? 0).toLocaleString()}{' '}
-                        <span className="text-muted-foreground/60">
-                          ({pct}%)
-                        </span>
+                        <span className="text-muted-foreground">({pct}%)</span>
                       </span>
                     </div>
                   );
@@ -246,14 +246,14 @@ export function DashboardPage() {
         )}
 
         {/* ── Recent sync jobs ── */}
-        <div className="rounded-lg border border-border bg-card p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Recent Sync Jobs</h2>
+        <div className="rounded-xl border border-border/60 bg-card p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-foreground">Recent Sync Jobs</h2>
             <button
-              className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+              className="text-xs font-semibold text-primary hover:text-primary/80 underline-offset-2 hover:underline transition-colors"
               onClick={() => navigate('/sync')}
             >
-              View all
+              View all →
             </button>
           </div>
           {!recentJobs?.data.length && (
@@ -284,11 +284,11 @@ export function DashboardPage() {
 
         {/* ── Lists overview ── */}
         {recentListsData && recentListsData.data.length > 0 && (
-          <div className="rounded-lg border border-border bg-card p-4 lg:col-span-2">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold">Recent Lists</h2>
+          <div className="rounded-xl border border-border/60 bg-card p-6 shadow-sm lg:col-span-2">
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-foreground">Recent Lists</h2>
               <button
-                className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                className="text-xs font-semibold text-primary hover:text-primary/80 underline-offset-2 hover:underline transition-colors"
                 onClick={() =>
                   navigate(
                     '/lists' +
@@ -298,26 +298,26 @@ export function DashboardPage() {
                   )
                 }
               >
-                View all
+                View all →
               </button>
             </div>
             <div className="-mx-4 overflow-x-auto sm:mx-0">
             <table className="w-full min-w-[560px] text-sm">
               <thead>
-                <tr className="border-b border-border">
-                  <th className="pb-2 text-left font-medium text-muted-foreground text-xs">
+                <tr className="border-b border-border/50">
+                  <th className="pb-3 text-left font-semibold text-foreground text-xs uppercase tracking-wider">
                     Name
                   </th>
-                  <th className="pb-2 text-left font-medium text-muted-foreground text-xs">
+                  <th className="pb-3 text-left font-semibold text-foreground text-xs uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="pb-2 text-right font-medium text-muted-foreground text-xs">
+                  <th className="pb-3 text-right font-semibold text-foreground text-xs uppercase tracking-wider">
                     Articles
                   </th>
-                  <th className="pb-2 text-right font-medium text-muted-foreground text-xs">
+                  <th className="pb-3 text-right font-semibold text-foreground text-xs uppercase tracking-wider">
                     Delivered
                   </th>
-                  <th className="pb-2 text-left font-medium text-muted-foreground text-xs">
+                  <th className="pb-3 text-left font-semibold text-foreground text-xs uppercase tracking-wider">
                     Updated
                   </th>
                 </tr>
@@ -335,38 +335,38 @@ export function DashboardPage() {
                   return (
                     <tr
                       key={list._id}
-                      className="border-b border-border/50 last:border-0 cursor-pointer hover:bg-muted/20"
+                      className="border-b border-border/30 last:border-0 cursor-pointer hover:bg-muted/40 transition-colors"
                       onClick={() =>
                         navigate(
                           `/articles?clientId=${list.clientId}&listId=${list._id}`,
                         )
                       }
                     >
-                      <td className="py-2.5">
-                        <p className="font-medium">{listDisplayName(list)}</p>
+                      <td className="py-3">
+                        <p className="font-semibold text-foreground">{listDisplayName(list)}</p>
                         {importSummary && (
-                          <p className="mt-0.5 text-xs text-muted-foreground">
+                          <p className="mt-0.5 text-xs text-muted-foreground font-medium">
                             Last import: {importSummary}
                           </p>
                         )}
                         {(importErrors ?? 0) > 0 && (
-                          <p className="mt-0.5 text-xs text-destructive">
+                          <p className="mt-0.5 text-xs text-destructive font-semibold">
                             {importErrors} import error
                             {importErrors !== 1 ? 's' : ''}
                           </p>
                         )}
                       </td>
-                      <td className="py-2.5">
+                      <td className="py-3">
                         <ListStatusBadge status={list.status} />
                       </td>
-                      <td className="py-2.5 text-right font-mono text-xs">
+                      <td className="py-3 text-right font-mono text-xs font-semibold text-foreground">
                         {(list.totalArticles ?? 0).toLocaleString()}
                       </td>
-                      <td className="py-2.5 text-right font-mono text-xs">
+                      <td className="py-3 text-right font-mono text-xs font-semibold text-foreground">
                         {delivered.toLocaleString()}{' '}
                         <span className="text-muted-foreground">({pct}%)</span>
                       </td>
-                      <td className="py-2.5 text-xs text-muted-foreground">
+                      <td className="py-3 text-xs font-medium text-muted-foreground">
                         {formatRelative(list.updatedAt)}
                       </td>
                     </tr>

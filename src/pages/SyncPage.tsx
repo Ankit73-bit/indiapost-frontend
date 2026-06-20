@@ -457,15 +457,19 @@ export function SyncPage() {
       : 'Syncs only non-terminal articles in the selected list.';
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button size="sm" onClick={openTriggerDialog}>
-          <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Trigger Sync
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Sync Jobs</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Monitor and manage India Post tracking synchronization</p>
+        </div>
+        <Button size="sm" onClick={openTriggerDialog} className="gap-2">
+          <RefreshCw className="h-4 w-4" /> Trigger Sync
         </Button>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <FilterSheetButton
           activeCount={jobFilterActiveCount}
           onClear={clearJobFilters}

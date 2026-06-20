@@ -478,23 +478,23 @@ export function UsersPage() {
           >
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                <tr className="border-b border-border/50 bg-muted/20">
+                  <th className="px-4 py-3 text-left font-semibold text-foreground text-xs uppercase tracking-wider">
                     User
                   </th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                  <th className="px-4 py-3 text-left font-semibold text-foreground text-xs uppercase tracking-wider">
                     Role
                   </th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                  <th className="px-4 py-3 text-left font-semibold text-foreground text-xs uppercase tracking-wider">
                     Client
                   </th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                  <th className="px-4 py-3 text-left font-semibold text-foreground text-xs uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                  <th className="px-4 py-3 text-left font-semibold text-foreground text-xs uppercase tracking-wider">
                     Created
                   </th>
-                  <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
+                  <th className="px-4 py-3 text-right font-semibold text-foreground text-xs uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
