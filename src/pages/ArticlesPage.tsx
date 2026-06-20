@@ -9,7 +9,6 @@ import {
   ArrowLeft,
   Package,
   AlertCircle,
-  Filter,
   Phone,
   Mail,
   MapPin,
@@ -48,9 +47,16 @@ import {
   useLazyListSyncableArticleIdsQuery,
   useGetArticleEventsQuery,
 } from '@/store/api/articlesApi';
-import { useListListsQuery } from '@/store/api/listsApi';
+import { useGetListQuery } from '@/store/api/listsApi';
 import { usePollListQuery } from '@/hooks/usePollListQuery';
 import { SearchableListSelect } from '@/components/shared/SearchableListSelect';
+import { FilterSheetButton, FilterField } from '@/components/shared/FilterSheetButton';
+import { HelpTooltip } from '@/components/shared/HelpTooltip';
+import {
+  saveArticlesContext,
+  loadArticlesContext,
+  getRecentArticleListIds,
+} from '@/lib/articlesNavigation';
 import { useListClientsQuery } from '@/store/api/clientsApi';
 import { useAppSelector } from '@/store';
 import { ALL_STATUSES, TERMINAL_STATUSES } from '@/types';
@@ -571,6 +577,58 @@ function NoContextState({ isAdmin }: { isAdmin: boolean }) {
   );
 }
 
+function RecentListCard({
+  clientId,
+  listId,
+  isMostRecent,
+}: {
+  clientId: string;
+  listId: string;
+  isMostRecent: boolean;
+}) {
+  const navigate = useNavigate();
+  const { data: list, isLoading, isError } = useGetListQuery(listId);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[88px] items-center justify-center rounded-lg border border-border bg-card">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (isError || !list) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        navigate(`/articles?clientId=${clientId}&listId=${list._id}`)
+      }
+      className={cn(
+        'rounded-lg border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/20',
+        isMostRecent
+          ? 'border-primary/50 ring-1 ring-primary/20'
+          : 'border-border',
+      )}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <p className="font-medium leading-snug">{listDisplayName(list)}</p>
+        <ListStatusBadge status={list.status} />
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+        <span>{list.totalArticles.toLocaleString()} articles</span>
+        {list.dispatchDate && (
+          <span>Dispatch {formatDate(list.dispatchDate)}</span>
+        )}
+        {isMostRecent && (
+          <span className="font-medium text-primary">Last opened</span>
+        )}
+      </div>
+    </button>
+  );
+}
+
 function ListPicker({
   clientId,
   isAdmin,
@@ -578,15 +636,7 @@ function ListPicker({
   clientId: string;
   isAdmin: boolean;
 }) {
-  const navigate = useNavigate();
-  const {
-    data: listsData,
-    isLoading,
-    isError,
-  } = useListListsQuery({
-    clientId,
-    limit: 100,
-  });
+  const recentListIds = getRecentArticleListIds(clientId);
   const { data: clientsData } = useListClientsQuery(
     { limit: 100 },
     { skip: !isAdmin },
@@ -596,33 +646,14 @@ function ListPicker({
     clientsData?.data.find((c) => c._id === clientId)?.name ??
     clientId.slice(-6);
 
-  if (isLoading) {
-    return (
-      <div className="flex h-48 items-center justify-center rounded-lg border border-border bg-card">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div className="flex h-48 flex-col items-center justify-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 text-center px-6">
-        <AlertCircle className="h-5 w-5 text-destructive" />
-        <p className="text-sm text-destructive">Failed to load lists.</p>
-      </div>
-    );
-  }
-
-  const lists = listsData?.data ?? [];
-
-  if (lists.length === 0) {
+  if (recentListIds.length === 0) {
     return (
       <div className="flex h-48 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-muted/20 text-center px-6">
-        <p className="font-medium">No lists found</p>
+        <p className="font-medium">No recent lists</p>
         <p className="text-sm text-muted-foreground">
           {isAdmin
-            ? `Create a list for ${clientName} to start tracking articles.`
-            : 'Create a list to start tracking articles.'}
+            ? `Open a list for ${clientName} from the Lists page — it will appear here for quick access.`
+            : 'Open a list from the Lists page — it will appear here for quick access.'}
         </p>
         <Link
           to={`/lists?clientId=${clientId}`}
@@ -636,38 +667,32 @@ function ListPicker({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        {isAdmin ? (
-          <>
-            Showing lists for{' '}
-            <span className="font-medium text-foreground">{clientName}</span>.
-            Select a list to view its articles.
-          </>
-        ) : (
-          'Select a list to view its articles.'
-        )}
-      </p>
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {lists.map((list) => (
-          <button
-            key={list._id}
-            type="button"
-            onClick={() =>
-              navigate(`/articles?clientId=${clientId}&listId=${list._id}`)
-            }
-            className="rounded-lg border border-border bg-card p-4 text-left transition-colors hover:border-primary/40 hover:bg-muted/20"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-medium leading-snug">{listDisplayName(list)}</p>
-              <ListStatusBadge status={list.status} />
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-              <span>{list.totalArticles.toLocaleString()} articles</span>
-              {list.dispatchDate && (
-                <span>Dispatch {formatDate(list.dispatchDate)}</span>
-              )}
-            </div>
-          </button>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          {isAdmin ? (
+            <>
+              Recently viewed for{' '}
+              <span className="font-medium text-foreground">{clientName}</span>
+            </>
+          ) : (
+            'Recently viewed lists'
+          )}
+        </p>
+        <Link
+          to={`/lists?clientId=${clientId}`}
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          Browse all lists
+        </Link>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {recentListIds.map((id, index) => (
+          <RecentListCard
+            key={id}
+            clientId={clientId}
+            listId={id}
+            isMostRecent={index === 0}
+          />
         ))}
       </div>
     </div>
@@ -702,12 +727,10 @@ function ListContextBar({
         variant="ghost"
         size="sm"
         className="h-8 gap-1.5 px-2 text-muted-foreground"
-        onClick={() =>
-          navigate(`/lists${isAdmin ? `?clientId=${clientId}` : ''}`)
-        }
+        onClick={() => navigate(`/articles?clientId=${clientId}`)}
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        Lists
+        Recent lists
       </Button>
 
       <div className="hidden h-4 w-px bg-border sm:block" />
@@ -864,6 +887,12 @@ function ArticlesListView({
   const hasActiveFilters = Boolean(
     searchInput || statusFilter || syncFailedOnly || nonTerminalOnly,
   );
+
+  const articleFilterActiveCount = [
+    statusFilter,
+    syncFailedOnly,
+    nonTerminalOnly,
+  ].filter(Boolean).length;
 
   function clearFilters() {
     setSearchInput('');
@@ -1044,70 +1073,90 @@ function ArticlesListView({
           )}
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-1.5 shrink-0">
-              <Filter className="h-3.5 w-3.5" />
-              {statusLabel}
-              <ChevronDown className="h-3.5 w-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
-            <DropdownMenuLabel>Status</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuRadioGroup
-              value={statusFilter ?? 'all'}
-              onValueChange={(v) => {
-                setStatusFilter(
-                  v === 'all' ? undefined : (v as NormalizedStatus),
-                );
+        <FilterSheetButton
+          activeCount={articleFilterActiveCount}
+          onClear={clearFilters}
+          clearDisabled={!hasActiveFilters}
+          description="Filter articles by delivery status or sync state."
+        >
+          <FilterField label="Status">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="w-full justify-between gap-1.5">
+                  {statusLabel}
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-48">
+                <DropdownMenuLabel>Status</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup
+                  value={statusFilter ?? 'all'}
+                  onValueChange={(v) => {
+                    setStatusFilter(
+                      v === 'all' ? undefined : (v as NormalizedStatus),
+                    );
+                    setPage(1);
+                  }}
+                >
+                  <DropdownMenuRadioItem value="all">
+                    All Statuses
+                  </DropdownMenuRadioItem>
+                  {ALL_STATUSES.map((s) => (
+                    <DropdownMenuRadioItem key={s} value={s}>
+                      {STATUS_CONFIG[s]?.label ?? s}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </FilterField>
+
+          <FilterField
+            label="Sync failed only"
+            hint={
+              <HelpTooltip content="Show only articles where the most recent India Post sync attempt failed." />
+            }
+          >
+            <Button
+              variant={syncFailedOnly ? 'default' : 'outline'}
+              size="sm"
+              className="w-full gap-1.5"
+              onClick={() => {
+                setSyncFailedOnly((v) => !v);
                 setPage(1);
               }}
             >
-              <DropdownMenuRadioItem value="all">
-                All Statuses
-              </DropdownMenuRadioItem>
-              {ALL_STATUSES.map((s) => (
-                <DropdownMenuRadioItem key={s} value={s}>
-                  {STATUS_CONFIG[s]?.label ?? s}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <AlertCircle className="h-3.5 w-3.5" />
+              {syncFailedOnly ? 'Enabled' : 'Off'}
+            </Button>
+          </FilterField>
 
-        <Button
-          variant={syncFailedOnly ? 'default' : 'outline'}
-          size="sm"
-          className="gap-1.5 shrink-0"
-          onClick={() => {
-            setSyncFailedOnly((v) => !v);
-            setPage(1);
-          }}
-        >
-          <AlertCircle className="h-3.5 w-3.5" />
-          Sync failed
-        </Button>
-
-        <Button
-          variant={nonTerminalOnly ? 'default' : 'outline'}
-          size="sm"
-          className="gap-1.5 shrink-0"
-          onClick={() => {
-            setNonTerminalOnly((v) => !v);
-            setPage(1);
-          }}
-        >
-          <Truck className="h-3.5 w-3.5" />
-          Non-terminal
-          {listNonTerminalCount > 0 && (
-            <span className="tabular-nums text-xs opacity-80">
-              ({nonTerminalOnly && data?.meta
-                ? data.meta.total.toLocaleString()
-                : listNonTerminalCount.toLocaleString()})
-            </span>
-          )}
-        </Button>
+          <FilterField
+            label="Non-terminal only"
+            hint={
+              <HelpTooltip content="Show articles still in transit (not delivered or RTO)." />
+            }
+          >
+            <Button
+              variant={nonTerminalOnly ? 'default' : 'outline'}
+              size="sm"
+              className="w-full gap-1.5"
+              onClick={() => {
+                setNonTerminalOnly((v) => !v);
+                setPage(1);
+              }}
+            >
+              <Truck className="h-3.5 w-3.5" />
+              Non-terminal
+              {listNonTerminalCount > 0 && (
+                <span className="tabular-nums text-xs opacity-80">
+                  ({listNonTerminalCount.toLocaleString()})
+                </span>
+              )}
+            </Button>
+          </FilterField>
+        </FilterSheetButton>
 
         {selectedSyncIds.size > 0 && (
           <Button
@@ -1424,13 +1473,31 @@ function ArticlesListView({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function ArticlesPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const urlClientId = searchParams.get('clientId') ?? '';
   const listId = searchParams.get('listId') ?? undefined;
   const authUser = useAppSelector((s) => s.auth.user);
   const isAdmin = authUser?.role === 'admin';
   const customerClientId = !isAdmin ? (authUser?.clientId ?? '') : '';
   const clientId = urlClientId || customerClientId;
+
+  useEffect(() => {
+    const saved = loadArticlesContext();
+    if (!saved?.clientId) return;
+
+    if (!isAdmin || urlClientId) return;
+
+    const next = new URLSearchParams(searchParams);
+    next.set('clientId', saved.clientId);
+    setSearchParams(next, { replace: true });
+    // Restore client only — list picker card view is shown until user picks a list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!clientId) return;
+    saveArticlesContext(clientId, listId);
+  }, [clientId, listId]);
 
   if (!clientId) {
     return (

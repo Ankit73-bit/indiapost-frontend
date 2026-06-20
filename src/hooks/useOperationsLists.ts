@@ -28,6 +28,7 @@ export function useOperationsLists(options?: OperationsListsOptions) {
 
   return {
     ...query,
+    data: query.data,
     importing,
     syncing,
     activeLists: [...importing, ...syncing] as List[],

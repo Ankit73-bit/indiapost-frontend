@@ -33,7 +33,13 @@ import { TableShell } from '@/components/shared/TableShell';
 import { ListTrackingRetentionBadge } from '@/components/shared/ListTrackingRetentionBadge';
 import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
-import { ClientFilterSelect } from '@/components/shared/ClientFilterSelect';
+import { SearchableClientSelect } from '@/components/shared/SearchableClientSelect';
+import {
+  SearchableNoticeTypeSelect,
+  ALL_NOTICE_TYPES,
+} from '@/components/shared/SearchableNoticeTypeSelect';
+import { FilterSheetButton, FilterField } from '@/components/shared/FilterSheetButton';
+import { HelpTooltip } from '@/components/shared/HelpTooltip';
 import { NoticeTypeCombobox } from '@/components/shared/NoticeTypeCombobox';
 import { OperationProgressBar } from '@/components/shared/OperationProgressBar';
 import { ListActionsMenu } from '@/components/lists/ListActionsMenu';
@@ -66,8 +72,6 @@ import {
   useListYearsQuery,
   useCreateListMutation,
   useUpdateListMutation,
-  useArchiveListMutation,
-  useUnarchiveListMutation,
   useDeleteListMutation,
   useUploadListFileMutation,
   useCancelImportMutation,
@@ -78,9 +82,6 @@ import type { List } from '@/types';
 
 const ALL_MONTHS = '__all_months__';
 const ALL_YEARS = '__all_years__';
-const ALL_TYPES = '__all_types__';
-const VISIBILITY_ACTIVE = 'active';
-const VISIBILITY_ARCHIVED = 'archived';
 
 const MONTH_OPTIONS = [
   { value: '1', label: 'January' },
@@ -130,8 +131,6 @@ export function ListsPage() {
     : (yearParam ?? String(currentYear()));
   const filterMonth = searchParams.get('month') ?? '';
   const filterNoticeType = searchParams.get('noticeType') ?? '';
-  const showArchivedOnly =
-    searchParams.get('visibility') === VISIBILITY_ARCHIVED;
   const sortOrder =
     searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
 
@@ -218,7 +217,6 @@ export function ListsPage() {
       year: showAllYears ? undefined : Number(filterYear),
       month: filterMonth ? Number(filterMonth) : undefined,
       noticeType: filterNoticeType || undefined,
-      status: showArchivedOnly ? 'ARCHIVED' : undefined,
       sortOrder,
       page,
       limit: 20,
@@ -268,13 +266,20 @@ export function ListsPage() {
     search ||
     filterMonth ||
     filterNoticeType ||
-    showArchivedOnly ||
     clientIdFilter ||
     showAllYears ||
     (!showAllYears &&
       yearParam !== null &&
       yearParam !== String(currentYear())),
   );
+
+  const filterActiveCount = [
+    clientIdFilter,
+    filterMonth,
+    filterNoticeType,
+    showAllYears ||
+      (yearParam !== null && yearParam !== String(currentYear())),
+  ].filter(Boolean).length;
 
   function setClientFilter(clientId: string | undefined) {
     const next = new URLSearchParams(searchParams);
@@ -327,9 +332,7 @@ export function ListsPage() {
 
   const [createList, { isLoading: creating }] = useCreateListMutation();
   const [updateList, { isLoading: updating }] = useUpdateListMutation();
-  const [archiveList] = useArchiveListMutation();
   const [deleteList, { isLoading: deleting }] = useDeleteListMutation();
-  const [unarchiveList] = useUnarchiveListMutation();
   const [uploadFile] = useUploadListFileMutation();
   const [cancelImport, { isLoading: cancellingImport }] =
     useCancelImportMutation();
@@ -577,13 +580,6 @@ export function ListsPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {isAdmin && (
-          <ClientFilterSelect
-            clients={activeClients}
-            value={clientIdFilter}
-            onChange={setClientFilter}
-          />
-        )}
         <Button
           variant="outline"
           size="sm"
@@ -610,32 +606,25 @@ export function ListsPage() {
 
       {importingLists.length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <p className="font-medium">
+          <p className="flex items-center gap-1.5 font-medium">
             Import in progress ({importingLists.length} list
             {importingLists.length !== 1 ? 's' : ''})
+            <HelpTooltip content="Processing runs on the server — refreshing or closing this page does not stop it. Progress updates every few seconds below." />
           </p>
-          <p className="mt-1 text-amber-800/90">
-            Processing runs on the server — refreshing or closing this page does
-            not stop it. Progress updates every few seconds below.
-            {importingLists.some((l) => isProgressStuck(l.importProgress)) && (
-              <span className="block mt-1 font-medium">
-                Progress has not moved in 5+ minutes — use Cancel in the row
-                menu to reset and upload again.
-              </span>
-            )}
-          </p>
+          {importingLists.some((l) => isProgressStuck(l.importProgress)) && (
+            <p className="mt-1 text-xs text-amber-800/90 font-medium">
+              Progress stalled — use Cancel in the row menu to reset and upload again.
+            </p>
+          )}
         </div>
       )}
 
       {syncingLists.length > 0 && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          <p className="font-medium">
+          <p className="flex items-center gap-1.5 font-medium">
             Sync in progress ({syncingLists.length} list
             {syncingLists.length !== 1 ? 's' : ''})
-          </p>
-          <p className="mt-1 text-blue-800/90">
-            India Post tracking sync runs on the server. Progress updates every
-            few seconds below.
+            <HelpTooltip content="India Post tracking sync runs on the server. Progress updates every few seconds below." />
           </p>
         </div>
       )}
@@ -661,85 +650,100 @@ export function ListsPage() {
           )}
         </div>
 
-        <Select
-          value={showAllYears ? ALL_YEARS : filterYear}
-          onValueChange={(v) =>
-            patchFilters({ year: v === ALL_YEARS ? 'all' : v })
-          }
+        <FilterSheetButton
+          activeCount={filterActiveCount}
+          onClear={clearFilters}
+          clearDisabled={!hasFilters}
+          description="Narrow lists by client, date, or notice type."
         >
-          <SelectTrigger className="w-[110px]">
-            <SelectValue placeholder="Year" />
-          </SelectTrigger>
-          <SelectContent>
-            {yearOptions.map((y) => (
-              <SelectItem key={y} value={String(y)}>
-                {y}
-              </SelectItem>
-            ))}
-            <SelectItem value={ALL_YEARS}>All years</SelectItem>
-          </SelectContent>
-        </Select>
+          {isAdmin && (
+            <FilterField
+              label="Client"
+              hint={
+                <HelpTooltip content="Filter lists to a single client organization." />
+              }
+            >
+              <SearchableClientSelect
+                clients={activeClients}
+                value={clientIdFilter}
+                onChange={setClientFilter}
+                className="w-full"
+                portaled={false}
+              />
+            </FilterField>
+          )}
 
-        <Select
-          value={filterMonth || ALL_MONTHS}
-          onValueChange={(v) => {
-            const month = v === ALL_MONTHS ? null : v;
-            const updates: Record<string, string | null> = { month };
-            if (month && (showAllYears || !searchParams.has('year'))) {
-              updates.year = String(currentYear());
+          <FilterField
+            label="Year"
+            hint={
+              <HelpTooltip content="Filter by notice date year. Defaults to the current year." />
             }
-            patchFilters(updates);
-          }}
-        >
-          <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="Month" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_MONTHS}>All months</SelectItem>
-            {MONTH_OPTIONS.map((m) => (
-              <SelectItem key={m.value} value={m.value}>
-                {m.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          >
+            <Select
+              value={showAllYears ? ALL_YEARS : filterYear}
+              onValueChange={(v) =>
+                patchFilters({ year: v === ALL_YEARS ? 'all' : v })
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {yearOptions.map((y) => (
+                  <SelectItem key={y} value={String(y)}>
+                    {y}
+                  </SelectItem>
+                ))}
+                <SelectItem value={ALL_YEARS}>All years</SelectItem>
+              </SelectContent>
+            </Select>
+          </FilterField>
 
-        <Select
-          value={filterNoticeType || ALL_TYPES}
-          onValueChange={(v) =>
-            patchFilters({ noticeType: v === ALL_TYPES ? null : v })
-          }
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Notice type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_TYPES}>All types</SelectItem>
-            {noticeTypeOptions.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <FilterField label="Month">
+            <Select
+              value={filterMonth || ALL_MONTHS}
+              onValueChange={(v) => {
+                const month = v === ALL_MONTHS ? null : v;
+                const updates: Record<string, string | null> = { month };
+                if (month && (showAllYears || !searchParams.has('year'))) {
+                  updates.year = String(currentYear());
+                }
+                patchFilters(updates);
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Month" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_MONTHS}>All months</SelectItem>
+                {MONTH_OPTIONS.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterField>
 
-        <Select
-          value={showArchivedOnly ? VISIBILITY_ARCHIVED : VISIBILITY_ACTIVE}
-          onValueChange={(v) =>
-            patchFilters({
-              visibility: v === VISIBILITY_ACTIVE ? null : v,
-              ...(v === VISIBILITY_ARCHIVED ? { year: 'all' } : {}),
-            })
-          }
-        >
-          <SelectTrigger className="w-[130px]">
-            <SelectValue placeholder="Show" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={VISIBILITY_ACTIVE}>Active</SelectItem>
-            <SelectItem value={VISIBILITY_ARCHIVED}>Archived</SelectItem>
-          </SelectContent>
-        </Select>
+          <FilterField
+            label="Notice type"
+            hint={
+              <HelpTooltip content="Filter by notice type code used when the list was created." />
+            }
+          >
+            <SearchableNoticeTypeSelect
+              options={noticeTypeOptions}
+              value={filterNoticeType || ALL_NOTICE_TYPES}
+              onChange={(v) =>
+                patchFilters({
+                  noticeType: v === ALL_NOTICE_TYPES ? null : v,
+                })
+              }
+              className="w-full"
+              portaled={false}
+            />
+          </FilterField>
+        </FilterSheetButton>
 
         <Button
           variant={sortOrder === 'asc' ? 'default' : 'outline'}
@@ -747,8 +751,8 @@ export function ListsPage() {
           className="gap-1.5 shrink-0"
           title={
             sortOrder === 'desc'
-              ? 'Sorted by newest dispatch first — click for oldest first'
-              : 'Sorted by oldest dispatch first — click for newest first'
+              ? 'Sorted by newest dispatch first'
+              : 'Sorted by oldest dispatch first'
           }
           onClick={() =>
             patchFilters({
@@ -761,7 +765,7 @@ export function ListsPage() {
           ) : (
             <ArrowUpWideNarrow className="h-3.5 w-3.5" />
           )}
-          {sortOrder === 'desc' ? 'Newest first' : 'Oldest first'}
+          {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
         </Button>
 
         {hasFilters && (
@@ -948,24 +952,6 @@ export function ListsPage() {
                       }
                       onTriggerSync={() => setSyncTarget(list)}
                       onEdit={() => openEdit(list)}
-                      onArchive={async () => {
-                        try {
-                          await archiveList(list._id).unwrap();
-                          toast.success(
-                            'List archived — switch to Archived to view or restore',
-                          );
-                        } catch (err) {
-                          toast.apiError(err, 'Failed to archive list');
-                        }
-                      }}
-                      onUnarchive={async () => {
-                        try {
-                          await unarchiveList(list._id).unwrap();
-                          toast.success('List restored');
-                        } catch (err) {
-                          toast.apiError(err, 'Failed to restore list');
-                        }
-                      }}
                       onDelete={() => {
                         setDeleteError('');
                         setDeleteTarget(list);
@@ -1214,7 +1200,6 @@ export function ListsPage() {
           year: showAllYears ? undefined : Number(filterYear),
           month: filterMonth ? Number(filterMonth) : undefined,
           noticeType: filterNoticeType || undefined,
-          includeArchived: showArchivedOnly,
         }}
         onSuccess={() => toast.success('Export downloaded')}
       />

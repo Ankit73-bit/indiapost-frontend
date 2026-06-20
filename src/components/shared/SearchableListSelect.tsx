@@ -36,7 +36,7 @@ export function preventDialogCloseForSearchableListMenu(event: {
   }
 }
 
-const DEFAULT_EXCLUDE_STATUSES: ListStatus[] = ['ARCHIVED'];
+const DEFAULT_EXCLUDE_STATUSES: ListStatus[] = [];
 
 interface SearchableListSelectProps {
   clientId?: string;

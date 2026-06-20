@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { HelpTooltip } from '@/components/shared/HelpTooltip';
 import {
   Select,
   SelectContent,
@@ -60,9 +61,20 @@ export function NoticeTypeCombobox({
 
   return (
     <div className="space-y-1.5">
-      <Label>
-        Notice Type {required && <span className="text-destructive">*</span>}
-      </Label>
+      <div className="flex items-center gap-1.5">
+        <Label>
+          Notice Type {required && <span className="text-destructive">*</span>}
+        </Label>
+        <HelpTooltip
+          content={
+            clientScoped
+              ? options.length > 0
+                ? 'Types previously used for this client, or add a new custom type.'
+                : 'No notice types yet for this client — add a custom type below.'
+              : 'Pick a preset or add a custom type — new types appear in filters after save.'
+          }
+        />
+      </div>
       <Select
         value={selectValue}
         disabled={disabled}
@@ -98,13 +110,6 @@ export function NoticeTypeCombobox({
         />
       )}
 
-      <p className="text-xs text-muted-foreground">
-        {clientScoped
-          ? options.length > 0
-            ? 'Types previously used for this client, or add a new custom type.'
-            : 'No notice types yet for this client — add a custom type below.'
-          : 'Pick a preset or add a custom type — new types appear in the filter after save.'}
-      </p>
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );

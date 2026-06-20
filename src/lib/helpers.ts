@@ -57,7 +57,6 @@ export const LIST_STATUS_CONFIG = {
   ACTIVE: { label: 'Active', color: 'bg-blue-100 text-blue-700 border-blue-200' },
   SYNCING: { label: 'Syncing', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
   COMPLETED: { label: 'Completed', color: 'bg-green-100 text-green-700 border-green-200' },
-  ARCHIVED: { label: 'Archived', color: 'bg-gray-100 text-gray-400 border-gray-200' },
 };
 
 export const SYNC_JOB_STATUS_CONFIG = {

@@ -19,11 +19,16 @@ import {
 } from '@/components/ui/dialog';
 import { downloadBulkExport, type BulkExportFilters } from '@/lib/exportList';
 import { useZipDownload } from '@/components/lists/ZipDownloadProvider';
+import { SearchableClientSelect } from '@/components/shared/SearchableClientSelect';
+import {
+  SearchableNoticeTypeSelect,
+  ALL_NOTICE_TYPES,
+} from '@/components/shared/SearchableNoticeTypeSelect';
+import { HelpTooltip } from '@/components/shared/HelpTooltip';
 import type { Client } from '@/types';
 
 const ALL_MONTHS = '__all_months__';
 const ALL_YEARS = '__all_years__';
-const ALL_NOTICE_TYPES = '__all_notice_types__';
 
 const MONTH_OPTIONS = [
   { value: '1', label: 'January' },
@@ -45,7 +50,6 @@ export interface CurrentListFilters {
   year?: number;
   month?: number;
   noticeType?: string;
-  includeArchived?: boolean;
 }
 
 interface ExportListsDialogProps {
@@ -86,9 +90,6 @@ function ExportListsDialogForm({
   );
   const [dispatchFrom, setDispatchFrom] = useState('');
   const [dispatchTo, setDispatchTo] = useState('');
-  const [includeArchived, setIncludeArchived] = useState(
-    currentFilters.includeArchived ?? false,
-  );
   const [exporting, setExporting] = useState(false);
   const [startingPdfZip, setStartingPdfZip] = useState(false);
   const [error, setError] = useState('');
@@ -108,7 +109,6 @@ function ExportListsDialogForm({
         noticeType === ALL_NOTICE_TYPES ? undefined : noticeType,
       dispatchFrom: dispatchFrom || undefined,
       dispatchTo: dispatchTo || undefined,
-      includeArchived: includeArchived || undefined,
     };
   }
 
@@ -159,30 +159,25 @@ function ExportListsDialogForm({
   return (
     <>
       <DialogHeader>
-        <DialogTitle>Export articles</DialogTitle>
+        <DialogTitle className="flex items-center gap-1.5">
+          Export articles
+          <HelpTooltip content="Export articles across multiple lists as Excel or a ZIP of tracking PDFs. Per-list export is available from each row's actions menu." />
+        </DialogTitle>
       </DialogHeader>
-
-      <p className="text-sm text-muted-foreground">
-        Export articles across multiple lists as Excel or a ZIP of tracking PDFs.
-        Per-list export is still available from each row&apos;s actions menu.
-      </p>
 
       <div className="space-y-4">
         {isAdmin && (
           <div className="space-y-1.5">
             <Label>Client</Label>
-            <Select value={clientId} onValueChange={setClientId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select client" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((c) => (
-                  <SelectItem key={c._id} value={c._id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableClientSelect
+              clients={clients}
+              value={clientId}
+              onChange={(id) => setClientId(id ?? '')}
+              showAllOption={false}
+              className="w-full"
+              placeholder="Select client"
+              portaled={false}
+            />
           </div>
         )}
 
@@ -223,27 +218,25 @@ function ExportListsDialogForm({
         </div>
 
         <div className="space-y-1.5">
-          <Label>Notice type</Label>
-          <Select value={noticeType} onValueChange={setNoticeType}>
-            <SelectTrigger>
-              <SelectValue placeholder="All notice types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL_NOTICE_TYPES}>All notice types</SelectItem>
-              {noticeTypeOptions.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {t}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label className="flex items-center gap-1.5">
+            Notice type
+            <HelpTooltip content="Limit export to lists with this notice type." />
+          </Label>
+          <SearchableNoticeTypeSelect
+            options={noticeTypeOptions}
+            value={noticeType}
+            onChange={setNoticeType}
+            placeholder="All notice types"
+            className="w-full"
+            portaled={false}
+          />
         </div>
 
         <div className="space-y-1.5">
-          <Label>Dispatch date range</Label>
-          <p className="text-xs text-muted-foreground">
-            Optional — leave blank to ignore dispatch dates.
-          </p>
+          <Label className="flex items-center gap-1.5">
+            Dispatch date range
+            <HelpTooltip content="Optional — leave blank to ignore dispatch dates." />
+          </Label>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="dispatch-from" className="text-xs text-muted-foreground">
@@ -269,16 +262,6 @@ function ExportListsDialogForm({
             </div>
           </div>
         </div>
-
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={includeArchived}
-            onChange={(e) => setIncludeArchived(e.target.checked)}
-            className="rounded border-input"
-          />
-          Include archived lists only
-        </label>
       </div>
 
       {error && (
@@ -327,7 +310,6 @@ export function ExportListsDialog({
     formProps.currentFilters.year,
     formProps.currentFilters.month,
     formProps.currentFilters.noticeType,
-    formProps.currentFilters.includeArchived,
     formProps.defaultClientId,
   ].join('|');
 

@@ -16,7 +16,6 @@ export interface BulkExportFilters {
   dispatchTo?: string;
   status?: string;
   syncFailed?: boolean;
-  includeArchived?: boolean;
 }
 
 async function downloadExcel(url: string, filename: string): Promise<void> {
@@ -81,7 +80,6 @@ export async function downloadBulkExport(
     dispatchTo: filters.dispatchTo,
     status: filters.status,
     syncFailed: filters.syncFailed ? 'true' : undefined,
-    includeArchived: filters.includeArchived ? 'true' : undefined,
   });
 
   const base = getApiBaseUrl();
@@ -93,7 +91,6 @@ export async function downloadBulkExport(
   if (filters.noticeType) parts.push(filters.noticeType.toLowerCase());
   if (filters.dispatchFrom) parts.push(filters.dispatchFrom);
   if (filters.dispatchTo) parts.push(filters.dispatchTo);
-  if (filters.includeArchived) parts.push('archived');
 
   const defaultFilename = `${parts.join('_')}.xlsx`;
   await downloadExcel(url, filename ?? defaultFilename);

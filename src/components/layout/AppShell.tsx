@@ -7,6 +7,7 @@ import { OperationsBanner } from '@/components/shared/OperationsBanner';
 import { ZipDownloadBanner } from '@/components/shared/ZipDownloadBanner';
 import { ZipDownloadProvider } from '@/components/lists/ZipDownloadProvider';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useAppSelector } from '@/store';
 import { isFullWidthAppRoute } from '@/lib/appLayout';
 
@@ -25,6 +26,7 @@ export function AppShell() {
 
   return (
     <ZipDownloadProvider>
+      <TooltipProvider delayDuration={300}>
       <div className="flex h-full min-h-0 overflow-hidden bg-background">
         <Sidebar />
 
@@ -55,6 +57,7 @@ export function AppShell() {
           </main>
         </div>
       </div>
+      </TooltipProvider>
     </ZipDownloadProvider>
   );
 }

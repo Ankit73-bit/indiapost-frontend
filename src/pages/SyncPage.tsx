@@ -26,7 +26,9 @@ import { Pagination } from '@/components/shared/Pagination';
 import { useListClientsQuery } from '@/store/api/clientsApi';
 import { listsApi } from '@/store/api/listsApi';
 import { useAppDispatch, useAppSelector } from '@/store';
-import { ClientFilterSelect } from '@/components/shared/ClientFilterSelect';
+import { ClientFilterSelect, SearchableClientSelect } from '@/components/shared/SearchableClientSelect';
+import { FilterSheetButton, FilterField } from '@/components/shared/FilterSheetButton';
+import { HelpTooltip } from '@/components/shared/HelpTooltip';
 import { listDisplayName } from '@/lib/listNaming';
 import {
   syncApi,
@@ -298,6 +300,26 @@ export function SyncPage() {
     filterToDate,
   );
 
+  const jobFilterActiveCount = [
+    filterClientId,
+    filterListId,
+    filterStatus,
+    filterJobType,
+    filterFromDate,
+    filterToDate,
+  ].filter(Boolean).length;
+
+  function clearJobFilters() {
+    patchParams({
+      clientId: null,
+      listId: null,
+      status: null,
+      type: null,
+      fromDate: null,
+      toDate: null,
+    });
+  }
+
   function handleClientChange(clientId: string) {
     setSelectedClientId(clientId);
     setSelectedListId(ALL_LISTS);
@@ -444,103 +466,114 @@ export function SyncPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <ClientFilterSelect
-          clients={clientsData?.data.filter((c) => c.isActive) ?? []}
-          value={filterClientId || undefined}
-          className="w-[180px]"
-          onChange={(clientId) =>
-            patchParams({
-              clientId: clientId ?? null,
-              listId: null,
-            })
-          }
-        />
-
-        <div className="w-[220px] min-w-0 max-w-full shrink">
-          <SearchableListSelect
-            clientId={filterClientId || undefined}
-            value={filterListId || ALL_LISTS_FILTER}
-            onChange={(v) =>
-              patchParams({ listId: v === ALL_LISTS_FILTER ? null : v })
-            }
-            disabled={!filterClientId}
-            showAllOption
-            allOptionValue={ALL_LISTS_FILTER}
-            allOptionLabel="All lists"
-            placeholder={filterClientId ? 'All lists' : 'Select client first'}
-            className="w-full"
-          />
-        </div>
-
-        <Select
-          value={filterStatus || ALL_STATUS}
-          onValueChange={(v) =>
-            patchParams({ status: v === ALL_STATUS ? null : v })
-          }
+        <FilterSheetButton
+          activeCount={jobFilterActiveCount}
+          onClear={clearJobFilters}
+          clearDisabled={!hasJobFilters}
+          description="Filter sync jobs by client, list, status, type, or date range."
         >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_STATUS}>All statuses</SelectItem>
-            {JOB_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <FilterField
+            label="Client"
+            hint={<HelpTooltip content="Scope jobs to one client organization." />}
+          >
+            <ClientFilterSelect
+              clients={clientsData?.data.filter((c) => c.isActive) ?? []}
+              value={filterClientId || undefined}
+              className="w-full"
+              portaled={false}
+              onChange={(clientId) =>
+                patchParams({
+                  clientId: clientId ?? null,
+                  listId: null,
+                })
+              }
+            />
+          </FilterField>
 
-        <Select
-          value={filterJobType || ALL_JOB_TYPES}
-          onValueChange={(v) =>
-            patchParams({ type: v === ALL_JOB_TYPES ? null : v })
-          }
-        >
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="All types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_JOB_TYPES}>All types</SelectItem>
-            {JOB_TYPES.map((t) => (
-              <SelectItem key={t} value={t}>
-                {t}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <FilterField label="List">
+            <SearchableListSelect
+              clientId={filterClientId || undefined}
+              value={filterListId || ALL_LISTS_FILTER}
+              onChange={(v) =>
+                patchParams({ listId: v === ALL_LISTS_FILTER ? null : v })
+              }
+              disabled={!filterClientId}
+              showAllOption
+              allOptionValue={ALL_LISTS_FILTER}
+              allOptionLabel="All lists"
+              placeholder={filterClientId ? 'All lists' : 'Select client first'}
+              className="w-full"
+              portaled={false}
+            />
+          </FilterField>
 
-        <Input
-          type="date"
-          className="h-9 w-[150px]"
-          value={filterFromDate}
-          onChange={(e) => patchParams({ fromDate: e.target.value || null })}
-          title="From date"
-        />
+          <FilterField label="Job status">
+            <Select
+              value={filterStatus || ALL_STATUS}
+              onValueChange={(v) =>
+                patchParams({ status: v === ALL_STATUS ? null : v })
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_STATUS}>All statuses</SelectItem>
+                {JOB_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterField>
 
-        <Input
-          type="date"
-          className="h-9 w-[150px]"
-          value={filterToDate}
-          onChange={(e) => patchParams({ toDate: e.target.value || null })}
-          title="To date"
-        />
+          <FilterField label="Job type">
+            <Select
+              value={filterJobType || ALL_JOB_TYPES}
+              onValueChange={(v) =>
+                patchParams({ type: v === ALL_JOB_TYPES ? null : v })
+              }
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_JOB_TYPES}>All types</SelectItem>
+                {JOB_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FilterField>
+
+          <FilterField
+            label="Date range"
+            hint={<HelpTooltip content="Filter jobs by start date (inclusive)." />}
+          >
+            <div className="grid grid-cols-2 gap-2">
+              <Input
+                type="date"
+                className="h-9"
+                value={filterFromDate}
+                onChange={(e) => patchParams({ fromDate: e.target.value || null })}
+                title="From date"
+              />
+              <Input
+                type="date"
+                className="h-9"
+                value={filterToDate}
+                onChange={(e) => patchParams({ toDate: e.target.value || null })}
+                title="To date"
+              />
+            </div>
+          </FilterField>
+        </FilterSheetButton>
 
         {hasJobFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              patchParams({
-                clientId: null,
-                listId: null,
-                status: null,
-                type: null,
-                fromDate: null,
-                toDate: null,
-              })
-            }
-          >
+          <Button variant="ghost" size="sm" onClick={clearJobFilters}>
             <X className="mr-1 h-3.5 w-3.5" /> Clear filters
           </Button>
         )}
@@ -701,11 +734,10 @@ export function SyncPage() {
         </TabsContent>
 
         <TabsContent value="failed">
-          <p className="mb-3 text-sm text-muted-foreground">
-            Articles where the last sync attempt failed. Select rows and retry
-            in bulk, or use Trigger Sync on the list to retry all non-terminal
-            articles.
-          </p>
+          <div className="mb-3 flex items-center gap-1.5 text-sm text-muted-foreground">
+            Failed sync attempts
+            <HelpTooltip content="Articles where the last sync attempt failed. Select rows and retry in bulk, or use Trigger Sync on the list to retry all non-terminal articles." />
+          </div>
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <div className="relative min-w-[200px] flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -854,10 +886,10 @@ export function SyncPage() {
         </TabsContent>
 
         <TabsContent value="expired">
-          <p className="mb-3 text-sm text-muted-foreground">
-            Articles past India Post&apos;s ~60-day tracking window. Local
-            tracking events are kept; further syncs are skipped automatically.
-          </p>
+          <div className="mb-3 flex items-center gap-1.5 text-sm text-muted-foreground">
+            Tracking expired
+            <HelpTooltip content="Articles past India Post's ~60-day tracking window. Local tracking events are kept; further syncs are skipped automatically." />
+          </div>
           <TableShell
             footer={
               expiredData?.meta && expiredData.meta.totalPages > 1 ? (
@@ -942,29 +974,23 @@ export function SyncPage() {
             <DialogTitle>Sync</DialogTitle>
           </DialogHeader>
           <div className="min-w-0 space-y-3 py-2">
-            <p className="text-sm text-muted-foreground">{scopeHint}</p>
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              Sync scope
+              <HelpTooltip content={scopeHint} />
+            </div>
 
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">
                 Client
               </label>
-              <Select
-                value={selectedClientId}
-                onValueChange={handleClientChange}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clientsData?.data
-                    .filter((c) => c.isActive)
-                    .map((c) => (
-                      <SelectItem key={c._id} value={c._id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <SearchableClientSelect
+                clients={clientsData?.data.filter((c) => c.isActive) ?? []}
+                value={selectedClientId || undefined}
+                onChange={(id) => handleClientChange(id ?? '')}
+                showAllOption={false}
+                className="w-full"
+                placeholder="Select client"
+              />
             </div>
 
             {selectedClientId && (

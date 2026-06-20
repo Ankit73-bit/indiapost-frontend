@@ -153,8 +153,7 @@ export type ListStatus =
   | 'IMPORTING'
   | 'ACTIVE'
   | 'SYNCING'
-  | 'COMPLETED'
-  | 'ARCHIVED';
+  | 'COMPLETED';
 
 export interface ImportProgress {
   totalRows: number;

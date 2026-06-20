@@ -123,31 +123,6 @@ export const listsApi = baseApi.injectEndpoints({
       ],
     }),
 
-    archiveList: build.mutation<List, string>({
-      query: (listId) => ({ url: `/api/v1/lists/${listId}`, method: 'DELETE' }),
-      transformResponse: (res: ApiSuccess<List>) => res.data,
-      invalidatesTags: (_r, _e, listId) => [
-        { type: 'List', id: listId },
-        { type: 'List', id: 'LIST' },
-        { type: 'List', id: 'STATS_ALL' },
-        ...(_r ? [{ type: 'List' as const, id: `STATS_${_r.clientId}` }] : []),
-      ],
-    }),
-
-    unarchiveList: build.mutation<List, string>({
-      query: (listId) => ({
-        url: `/api/v1/lists/${listId}/unarchive`,
-        method: 'POST',
-      }),
-      transformResponse: (res: ApiSuccess<List>) => res.data,
-      invalidatesTags: (_r, _e, listId) => [
-        { type: 'List', id: listId },
-        { type: 'List', id: 'LIST' },
-        { type: 'List', id: 'STATS_ALL' },
-        ...(_r ? [{ type: 'List' as const, id: `STATS_${_r.clientId}` }] : []),
-      ],
-    }),
-
     deleteList: build.mutation<{ deleted: boolean; listId: string }, string>({
       query: (listId) => ({
         url: `/api/v1/lists/${listId}/soft-delete`,
@@ -265,8 +240,6 @@ export const {
   useGetListQuery,
   useCreateListMutation,
   useUpdateListMutation,
-  useArchiveListMutation,
-  useUnarchiveListMutation,
   useDeleteListMutation,
   useUploadListFileMutation,
   useCancelImportMutation,

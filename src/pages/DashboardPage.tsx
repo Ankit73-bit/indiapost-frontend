@@ -15,7 +15,7 @@ import {
   ListStatusBadge,
   SyncJobStatusBadge,
 } from '@/components/shared/StatusBadge';
-import { ClientFilterSelect } from '@/components/shared/ClientFilterSelect';
+import { ClientFilterSelect } from '@/components/shared/SearchableClientSelect';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { importResultSummary } from '@/lib/listProgress';
 import { listDisplayName } from '@/lib/listNaming';

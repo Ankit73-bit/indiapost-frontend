@@ -251,7 +251,6 @@ function bulkFiltersBody(filters: BulkExportFilters): Record<string, unknown> {
     ...(filters.dispatchTo ? { dispatchTo: filters.dispatchTo } : {}),
     ...(filters.status ? { status: filters.status } : {}),
     ...(filters.syncFailed ? { syncFailed: 'true' } : {}),
-    ...(filters.includeArchived ? { includeArchived: 'true' } : {}),
   };
 }
 

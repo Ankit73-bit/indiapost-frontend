@@ -6,8 +6,6 @@ import {
   FileText,
   RefreshCw,
   Pencil,
-  Archive,
-  ArchiveRestore,
   Trash2,
   XCircle,
   Loader2,
@@ -33,8 +31,6 @@ export interface ListActionsMenuProps {
   onOpenPdfs: () => void;
   onTriggerSync: () => void;
   onEdit: () => void;
-  onArchive: () => void;
-  onUnarchive: () => void;
   onDelete: () => void;
   onCancelImport: () => void;
   onCancelSync: () => void;
@@ -51,15 +47,12 @@ export function ListActionsMenu({
   onOpenPdfs,
   onTriggerSync,
   onEdit,
-  onArchive,
-  onUnarchive,
   onDelete,
   onCancelImport,
   onCancelSync,
 }: ListActionsMenuProps) {
   const isBusy = list.status === 'IMPORTING' || list.status === 'SYNCING';
-  const canSync =
-    isAdmin && !isBusy && list.status !== 'ARCHIVED' && list.totalArticles > 0;
+  const canSync = isAdmin && !isBusy && list.totalArticles > 0;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -164,17 +157,6 @@ export function ListActionsMenu({
         {isAdmin && (
           <>
             <DropdownMenuSeparator />
-            {list.status === 'ARCHIVED' ? (
-              <DropdownMenuItem className="gap-2" onClick={onUnarchive}>
-                <ArchiveRestore className="h-3.5 w-3.5" />
-                Unarchive
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem className="gap-2" onClick={onArchive}>
-                <Archive className="h-3.5 w-3.5" />
-                Archive
-              </DropdownMenuItem>
-            )}
             <DropdownMenuItem
               className="gap-2 text-destructive focus:text-destructive"
               onClick={onDelete}
