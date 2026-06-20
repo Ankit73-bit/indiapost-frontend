@@ -8,6 +8,7 @@ import { ZipDownloadBanner } from '@/components/shared/ZipDownloadBanner';
 import { ZipDownloadProvider } from '@/components/lists/ZipDownloadProvider';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useAppSelector } from '@/store';
+import { isFullWidthAppRoute } from '@/lib/appLayout';
 
 export function AppShell() {
   const token = useAppSelector((s) => s.auth.token);
@@ -19,6 +20,8 @@ export function AppShell() {
   }, [location.pathname]);
 
   if (!token) return <Navigate to="/login" replace />;
+
+  const isFullWidth = isFullWidthAppRoute(location.pathname);
 
   return (
     <ZipDownloadProvider>
@@ -40,7 +43,13 @@ export function AppShell() {
           <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
             <OperationsBanner />
             <ZipDownloadBanner />
-            <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
+            <div
+              className={
+                isFullWidth
+                  ? 'w-full px-4 py-4 sm:px-6'
+                  : 'mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6'
+              }
+            >
               <Outlet />
             </div>
           </main>

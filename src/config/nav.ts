@@ -56,6 +56,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: ScrollText,
     children: [
       { to: '/notice-generator/templates', label: 'Template' },
+      { to: '/notice-generator/config', label: 'Config' },
       { to: '/notice-generator/excel', label: 'Excel' },
     ],
   },

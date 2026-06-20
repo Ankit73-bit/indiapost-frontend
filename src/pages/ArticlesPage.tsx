@@ -38,7 +38,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { PageHeader } from '@/components/shared/PageHeader';
 import {
   ArticleStatusBadge,
   ListStatusBadge,
@@ -1028,7 +1027,7 @@ function ArticlesListView({
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+        <div className="relative min-w-[200px] flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder={searchPlaceholder}
@@ -1436,10 +1435,6 @@ export function ArticlesPage() {
   if (!clientId) {
     return (
       <div className="space-y-5">
-        <PageHeader
-          title="Articles"
-          description="Individual postal articles and their tracking status."
-        />
         <NoContextState isAdmin={isAdmin} />
       </div>
     );
@@ -1448,10 +1443,6 @@ export function ArticlesPage() {
   if (!listId) {
     return (
       <div className="space-y-5">
-        <PageHeader
-          title="Articles"
-          description="Individual postal articles and their tracking status."
-        />
         <ListPicker clientId={clientId} isAdmin={isAdmin} />
       </div>
     );
@@ -1459,10 +1450,6 @@ export function ArticlesPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Articles"
-        description="Individual postal articles and their tracking status."
-      />
       <ArticlesListView
         key={`${clientId}-${listId}`}
         clientId={clientId}

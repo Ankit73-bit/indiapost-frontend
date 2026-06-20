@@ -10,12 +10,6 @@ export function NoticeExcelPage() {
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Excel uploads</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Upload spreadsheet data, map columns, and queue notice PDF generation runs.
-          </p>
-        </div>
         <Button disabled title="Coming in the next phase">
           <Plus className="mr-2 h-4 w-4" />
           New upload
@@ -36,7 +30,7 @@ export function NoticeExcelPage() {
           </div>
           {!clientId && (
             <p className="text-xs text-amber-600 dark:text-amber-400">
-              Select a client above to scope Excel uploads.
+              Select a client to scope Excel uploads.
             </p>
           )}
           <div className="flex flex-wrap justify-center gap-2">

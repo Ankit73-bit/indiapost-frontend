@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PageHeader } from '@/components/shared/PageHeader';
 import { TableShell } from '@/components/shared/TableShell';
 // import { TrackingRetentionAdminNote } from '@/components/shared/TrackingRetentionAdminNote';
 import { SearchableListSelect } from '@/components/shared/SearchableListSelect';
@@ -406,15 +405,11 @@ export function SyncPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Sync"
-        description="Monitor and trigger India Post tracking sync jobs."
-        actions={
-          <Button size="sm" onClick={openTriggerDialog}>
-            <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Trigger Sync
-          </Button>
-        }
-      />
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <Button size="sm" onClick={openTriggerDialog}>
+          <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Trigger Sync
+        </Button>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
@@ -681,7 +676,7 @@ export function SyncPage() {
             articles.
           </p>
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[200px] max-w-sm flex-1">
+            <div className="relative min-w-[200px] flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search article # or error…"

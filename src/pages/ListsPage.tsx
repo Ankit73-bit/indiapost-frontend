@@ -29,7 +29,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { PageHeader } from '@/components/shared/PageHeader';
 import { TableShell } from '@/components/shared/TableShell';
 import { ListTrackingRetentionBadge } from '@/components/shared/ListTrackingRetentionBadge';
 import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
@@ -578,36 +577,30 @@ export function ListsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="Lists"
-        description="Batches of postal articles grouped by dispatch event."
-        actions={
-          <div className="flex items-center gap-2">
-            {isAdmin && (
-              <ClientFilterSelect
-                clients={activeClients}
-                value={clientIdFilter}
-                onChange={setClientFilter}
-              />
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setExportDialogOpen(true)}
-              disabled={customerInactive || activeClients.length === 0}
-            >
-              <Download className="mr-1.5 h-3.5 w-3.5" /> Export
-            </Button>
-            <Button
-              size="sm"
-              onClick={openCreate}
-              disabled={customerInactive || activeClients.length === 0}
-            >
-              <Plus className="mr-1.5 h-3.5 w-3.5" /> New List
-            </Button>
-          </div>
-        }
-      />
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {isAdmin && (
+          <ClientFilterSelect
+            clients={activeClients}
+            value={clientIdFilter}
+            onChange={setClientFilter}
+          />
+        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setExportDialogOpen(true)}
+          disabled={customerInactive || activeClients.length === 0}
+        >
+          <Download className="mr-1.5 h-3.5 w-3.5" /> Export
+        </Button>
+        <Button
+          size="sm"
+          onClick={openCreate}
+          disabled={customerInactive || activeClients.length === 0}
+        >
+          <Plus className="mr-1.5 h-3.5 w-3.5" /> New List
+        </Button>
+      </div>
 
       {customerInactive && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -656,7 +649,7 @@ export function ListsPage() {
 
       {/* Search & filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
+        <div className="relative min-w-[200px] flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search by list name, client…"

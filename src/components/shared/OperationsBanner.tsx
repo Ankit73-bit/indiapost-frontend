@@ -4,8 +4,12 @@ import { useAppSelector } from '@/store';
 import { usePollListsWhileActive } from '@/hooks/usePollListsWhileActive';
 import { importPercent, syncPercent } from '@/lib/listProgress';
 import { listDisplayName } from '@/lib/listNaming';
+import { isFullWidthAppRoute } from '@/lib/appLayout';
+import { cn } from '@/lib/utils';
+import { useLocation } from 'react-router-dom';
 
 export function OperationsBanner() {
+  const location = useLocation();
   const user = useAppSelector((s) => s.auth.user);
   const isAdmin = user?.role === 'admin';
   const clientId = !isAdmin ? (user?.clientId ?? undefined) : undefined;
@@ -18,9 +22,16 @@ export function OperationsBanner() {
 
   if (activeCount === 0) return null;
 
+  const fullWidth = isFullWidthAppRoute(location.pathname);
+
   return (
     <div className="border-b border-border bg-muted/30 px-4 py-2.5 sm:px-6">
-      <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+      <div
+        className={cn(
+          'flex flex-wrap items-center gap-x-4 gap-y-2 text-sm',
+          fullWidth ? 'w-full' : 'mx-auto max-w-7xl',
+        )}
+      >
         <span className="flex items-center gap-1.5 font-medium text-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
           Background operations ({activeCount})

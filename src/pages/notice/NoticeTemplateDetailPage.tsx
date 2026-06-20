@@ -54,10 +54,6 @@ export function NoticeTemplateDetailPage() {
       <div>
         <p className="font-mono text-xs text-muted-foreground">{template.noticeId}</p>
         <h2 className="text-xl font-semibold">{template.noticeName}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage versions, mark a default, and test PDF output — like MSG91 template
-          versioning.
-        </p>
       </div>
 
       <NoticeTemplateVersionWorkspace

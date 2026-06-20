@@ -175,7 +175,7 @@ export function CreateNoticeTemplateFlow({
   const stepIndex = STEPS.findIndex((s) => s.id === step);
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6">
+    <div className="flex w-full flex-col gap-6">
       <NoticeStepIndicator steps={[...STEPS]} currentIndex={stepIndex} />
 
       <div className="min-h-[420px]">

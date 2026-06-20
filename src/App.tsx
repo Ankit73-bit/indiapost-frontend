@@ -16,6 +16,7 @@ import { NoticeGeneratorLayout } from '@/components/notice/NoticeGeneratorLayout
 import { NoticeTemplatesListPage } from '@/pages/notice/NoticeTemplatesListPage';
 import { NoticeTemplateCreatePage } from '@/pages/notice/NoticeTemplateCreatePage';
 import { NoticeTemplateDetailPage } from '@/pages/notice/NoticeTemplateDetailPage';
+import { NoticeConfigPage } from '@/pages/notice/NoticeConfigPage';
 import { NoticeExcelPage } from '@/pages/notice/NoticeExcelPage';
 
 // Admin-only guard
@@ -68,6 +69,7 @@ export default function App() {
               <Route path="templates" element={<NoticeTemplatesListPage />} />
               <Route path="templates/new" element={<NoticeTemplateCreatePage />} />
               <Route path="templates/:templateId" element={<NoticeTemplateDetailPage />} />
+              <Route path="config" element={<NoticeConfigPage />} />
               <Route path="excel" element={<NoticeExcelPage />} />
             </Route>
 
