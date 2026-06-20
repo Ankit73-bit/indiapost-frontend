@@ -140,6 +140,11 @@ export interface ListClientsQuery {
   isActive?: boolean;
 }
 
+export interface ClientSummaryStats {
+  total: number;
+  active: number;
+}
+
 // ─── List ─────────────────────────────────────────────────────────────────────
 
 export type NoticeType = string;
@@ -285,6 +290,12 @@ export interface ListListsQuery {
   limit?: number;
   /** Dispatch date order — default newest dispatch first */
   sortOrder?: 'asc' | 'desc';
+}
+
+export interface ListSummaryStats {
+  total: number;
+  importing: number;
+  syncing: number;
 }
 
 // ─── Article ──────────────────────────────────────────────────────────────────

@@ -28,18 +28,3 @@ export function usePollListsWhileActive(
 
   return useListListsQuery(args, { ...queryOptions, pollingInterval });
 }
-
-/** Poll lists with a specific status (for import/sync banners). */
-export function usePollListsByStatus(
-  args: ListListsArgs & { status: string },
-  forcePoll = false,
-) {
-  const cached = useAppSelector((state) =>
-    listsApi.endpoints.listLists.select(args)(state).data,
-  );
-
-  const isActive = (cached?.data.length ?? 0) > 0;
-  const pollingInterval = forcePoll || isActive ? 3000 : 0;
-
-  return useListListsQuery(args, { pollingInterval });
-}

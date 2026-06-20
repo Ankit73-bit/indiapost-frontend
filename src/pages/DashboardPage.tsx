@@ -4,13 +4,12 @@ import {
   Users,
   List,
   AlertTriangle,
-  Loader2,
 } from 'lucide-react';
 import { useAppSelector } from '@/store';
-import { useListClientsQuery } from '@/store/api/clientsApi';
+import { useListClientsQuery, useGetClientStatsQuery } from '@/store/api/clientsApi';
 import { useGetArticleStatsQuery } from '@/store/api/articlesApi';
 import { useListSyncJobsQuery, useListFailedArticlesQuery } from '@/store/api/syncApi';
-import { usePollListsWhileActive } from '@/hooks/usePollListsWhileActive';
+import { useListListsQuery, useGetListStatsQuery, listsApi } from '@/store/api/listsApi';
 import {
   ArticleStatusBadge,
   ListStatusBadge,
@@ -70,15 +69,34 @@ export function DashboardPage() {
     ? (searchParams.get('clientId') ?? undefined)
     : customerClientId;
 
-  const { data: clientsData } = useListClientsQuery({ limit: 100 }, { skip: !isAdmin });
-
-  const { data: listsData } = usePollListsWhileActive(
-    dashboardClientId ? { clientId: dashboardClientId, limit: 100 } : { limit: 100 },
+  const { data: clientStats } = useGetClientStatsQuery(undefined, {
+    skip: !isAdmin,
+  });
+  const { data: clientsData } = useListClientsQuery(
+    { isActive: true, limit: 100 },
+    { skip: !isAdmin },
   );
 
-  const importingLists = listsData?.data.filter((l) => l.status === 'IMPORTING') ?? [];
-  const syncingLists = listsData?.data.filter((l) => l.status === 'SYNCING') ?? [];
-  const hasActiveOps = importingLists.length > 0 || syncingLists.length > 0;
+  const listStatsArgs = dashboardClientId
+    ? { clientId: dashboardClientId }
+    : undefined;
+  const cachedListStats = useAppSelector((state) =>
+    listsApi.endpoints.getListStats.select(listStatsArgs)(state).data,
+  );
+  const { data: listStats } = useGetListStatsQuery(listStatsArgs, {
+    skip: !isAdmin && !customerClientId,
+    pollingInterval:
+      (cachedListStats?.importing ?? 0) > 0 ||
+      (cachedListStats?.syncing ?? 0) > 0
+        ? 3000
+        : 0,
+  });
+
+  const { data: recentListsData } = useListListsQuery({
+    clientId: dashboardClientId,
+    limit: 5,
+    sortOrder: 'desc',
+  });
 
   const { data: statsData, isLoading: statsLoading } = useGetArticleStatsQuery(
     dashboardClientId,
@@ -87,19 +105,20 @@ export function DashboardPage() {
 
   const { data: recentJobs } = useListSyncJobsQuery({ page: 1, limit: 5 });
   const { data: failedData } = useListFailedArticlesQuery(
-    dashboardClientId ? { clientId: dashboardClientId } : undefined,
+    dashboardClientId
+      ? { clientId: dashboardClientId, limit: 1 }
+      : { limit: 1 },
   );
 
-  const activeClients = clientsData?.data.filter((c) => c.isActive).length ?? 0;
-  const totalLists = listsData?.meta?.total ?? listsData?.data.length ?? 0;
+  const totalLists = listStats?.total ?? 0;
   const failedCount = failedData?.meta?.total ?? 0;
 
   const listsSubParts: string[] = [];
-  if (importingLists.length > 0) {
-    listsSubParts.push(`${importingLists.length} importing`);
+  if ((listStats?.importing ?? 0) > 0) {
+    listsSubParts.push(`${listStats!.importing} importing`);
   }
-  if (syncingLists.length > 0) {
-    listsSubParts.push(`${syncingLists.length} syncing`);
+  if ((listStats?.syncing ?? 0) > 0) {
+    listsSubParts.push(`${listStats!.syncing} syncing`);
   }
 
   function setDashboardClient(clientId: string | undefined) {
@@ -120,7 +139,7 @@ export function DashboardPage() {
         actions={
           isAdmin ? (
             <ClientFilterSelect
-              clients={clientsData?.data.filter((c) => c.isActive) ?? []}
+              clients={clientsData?.data ?? []}
               value={dashboardClientId}
               onChange={setDashboardClient}
             />
@@ -128,51 +147,14 @@ export function DashboardPage() {
         }
       />
 
-      {hasActiveOps && (
-        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
-          <p className="flex items-center gap-2 font-medium">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            Background operations in progress
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {importingLists.map((list) => (
-              <button
-                key={list._id}
-                type="button"
-                onClick={() =>
-                  navigate(`/lists?clientId=${list.clientId}`)
-                }
-                className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs text-amber-900 hover:bg-amber-100"
-              >
-                {listDisplayName(list)} — importing
-              </button>
-            ))}
-            {syncingLists.map((list) => (
-              <button
-                key={list._id}
-                type="button"
-                onClick={() =>
-                  navigate(
-                    `/sync?listId=${list._id}&clientId=${list.clientId}`,
-                  )
-                }
-                className="rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs text-blue-900 hover:bg-blue-100"
-              >
-                {listDisplayName(list)} — syncing
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* ── Top stats ── */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {isAdmin && (
           <StatCard
             label="Active Clients"
-            value={activeClients}
+            value={clientStats?.active ?? 0}
             icon={Users}
-            sub={`${clientsData?.data.length ?? 0} total`}
+            sub={`${clientStats?.total ?? 0} total`}
             onClick={() => navigate('/clients')}
           />
         )}
@@ -301,7 +283,7 @@ export function DashboardPage() {
         </div>
 
         {/* ── Lists overview ── */}
-        {listsData && listsData.data.length > 0 && (
+        {recentListsData && recentListsData.data.length > 0 && (
           <div className="rounded-lg border border-border bg-card p-4 lg:col-span-2">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold">Recent Lists</h2>
@@ -341,7 +323,7 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {listsData.data.slice(0, 5).map((list) => {
+                {recentListsData.data.map((list) => {
                   const delivered = list.stats?.DELIVERED ?? 0;
                   const pct =
                     list.totalArticles > 0

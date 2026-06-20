@@ -2,6 +2,7 @@ import { baseApi } from './baseApi';
 import type {
   ApiSuccess,
   List,
+  ListSummaryStats,
   CreateListBody,
   UpdateListBody,
   ListListsQuery,
@@ -42,6 +43,17 @@ export const listsApi = baseApi.injectEndpoints({
       },
     }),
 
+    getListStats: build.query<ListSummaryStats, { clientId?: string } | void>({
+      query: (params) => ({
+        url: '/api/v1/lists/stats',
+        params: params?.clientId ? { clientId: params.clientId } : undefined,
+      }),
+      transformResponse: (res: ApiSuccess<ListSummaryStats>) => res.data,
+      providesTags: (_r, _e, arg) => [
+        { type: 'List', id: `STATS_${arg?.clientId ?? 'ALL'}` },
+      ],
+    }),
+
     getList: build.query<List, string>({
       query: (listId) => `/api/v1/lists/${listId}`,
       transformResponse: (res: ApiSuccess<List>) => res.data,
@@ -75,10 +87,12 @@ export const listsApi = baseApi.injectEndpoints({
       transformResponse: (res: ApiSuccess<List>) => res.data,
       invalidatesTags: (result) => [
         { type: 'List', id: 'LIST' },
+        { type: 'List', id: 'STATS_ALL' },
         { type: 'List', id: 'NOTICE_TYPES_ALL' },
         { type: 'List', id: 'YEARS_ALL' },
         ...(result
           ? [
+              { type: 'List' as const, id: `STATS_${result.clientId}` },
               { type: 'List' as const, id: `NOTICE_TYPES_${result.clientId}` },
               { type: 'List' as const, id: `YEARS_${result.clientId}` },
             ]
@@ -96,10 +110,12 @@ export const listsApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { listId }) => [
         { type: 'List', id: listId },
         { type: 'List', id: 'LIST' },
+        { type: 'List', id: 'STATS_ALL' },
         { type: 'List', id: 'NOTICE_TYPES_ALL' },
         { type: 'List', id: 'YEARS_ALL' },
         ...(_r
           ? [
+              { type: 'List' as const, id: `STATS_${_r.clientId}` },
               { type: 'List' as const, id: `NOTICE_TYPES_${_r.clientId}` },
               { type: 'List' as const, id: `YEARS_${_r.clientId}` },
             ]
@@ -113,6 +129,8 @@ export const listsApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, listId) => [
         { type: 'List', id: listId },
         { type: 'List', id: 'LIST' },
+        { type: 'List', id: 'STATS_ALL' },
+        ...(_r ? [{ type: 'List' as const, id: `STATS_${_r.clientId}` }] : []),
       ],
     }),
 
@@ -125,6 +143,8 @@ export const listsApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, listId) => [
         { type: 'List', id: listId },
         { type: 'List', id: 'LIST' },
+        { type: 'List', id: 'STATS_ALL' },
+        ...(_r ? [{ type: 'List' as const, id: `STATS_${_r.clientId}` }] : []),
       ],
     }),
 
@@ -139,6 +159,7 @@ export const listsApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, listId) => [
         { type: 'List', id: listId },
         { type: 'List', id: 'LIST' },
+        { type: 'List', id: 'STATS_ALL' },
         { type: 'Article', id: 'LIST' },
       ],
     }),
@@ -154,6 +175,7 @@ export const listsApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, listId) => [
         { type: 'List', id: listId },
         { type: 'List', id: 'LIST' },
+        { type: 'List', id: 'STATS_ALL' },
       ],
     }),
 
@@ -168,6 +190,7 @@ export const listsApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, listId) => [
         { type: 'List', id: listId },
         { type: 'List', id: 'LIST' },
+        { type: 'List', id: 'STATS_ALL' },
       ],
     }),
 
@@ -184,6 +207,7 @@ export const listsApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { listId }) => [
         { type: 'List', id: listId },
         { type: 'List', id: 'LIST' },
+        { type: 'List', id: 'STATS_ALL' },
       ],
     }),
 
@@ -235,6 +259,7 @@ export const listsApi = baseApi.injectEndpoints({
 
 export const {
   useListListsQuery,
+  useGetListStatsQuery,
   useListNoticeTypesQuery,
   useListYearsQuery,
   useGetListQuery,

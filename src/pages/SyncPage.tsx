@@ -179,6 +179,43 @@ export function SyncPage() {
     ],
   );
 
+  const failedFilters = useMemo(
+    () => ({
+      clientId: filterClientId || undefined,
+      listId: filterListId || undefined,
+      search: failedSearch || undefined,
+    }),
+    [filterClientId, filterListId, failedSearch],
+  );
+
+  const failedCountQueryArgs = useMemo(
+    () => ({ ...failedFilters, page: 1, limit: 1 }),
+    [failedFilters],
+  );
+
+  const failedPageQueryArgs = useMemo(
+    () => ({ ...failedFilters, page: failedPage, limit: 20 }),
+    [failedFilters, failedPage],
+  );
+
+  const expiredFilters = useMemo(
+    () => ({
+      clientId: filterClientId || undefined,
+      listId: filterListId || undefined,
+    }),
+    [filterClientId, filterListId],
+  );
+
+  const expiredCountQueryArgs = useMemo(
+    () => ({ ...expiredFilters, page: 1, limit: 1 }),
+    [expiredFilters],
+  );
+
+  const expiredPageQueryArgs = useMemo(
+    () => ({ ...expiredFilters, page: expiredPage, limit: 20 }),
+    [expiredFilters, expiredPage],
+  );
+
   const cachedJobs = useAppSelector(
     (state) => syncApi.endpoints.listSyncJobs.select(jobsQueryArgs)(state).data,
   );
@@ -197,23 +234,17 @@ export function SyncPage() {
 
   const { data: failedData, isLoading: failedLoading } =
     useListFailedArticlesQuery(
+      activeTab === 'failed' ? failedPageQueryArgs : failedCountQueryArgs,
       {
-        page: failedPage,
-        limit: 20,
-        clientId: filterClientId || undefined,
-        listId: filterListId || undefined,
-        search: failedSearch || undefined,
+        pollingInterval:
+          activeTab === 'failed' && shouldPollJobs ? 3000 : 0,
       },
-      { pollingInterval: shouldPollJobs ? 3000 : 0 },
     );
 
   const { data: expiredData, isLoading: expiredLoading } =
-    useListTrackingExpiredArticlesQuery({
-      page: expiredPage,
-      limit: 20,
-      clientId: filterClientId || undefined,
-      listId: filterListId || undefined,
-    });
+    useListTrackingExpiredArticlesQuery(
+      activeTab === 'expired' ? expiredPageQueryArgs : expiredCountQueryArgs,
+    );
 
   const listNameById = useMemo(() => {
     const map = new Map<string, string>();

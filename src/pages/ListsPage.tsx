@@ -55,8 +55,8 @@ import { ListStatusBadge } from '@/components/shared/StatusBadge';
 import { Pagination } from '@/components/shared/Pagination';
 import {
   usePollListsWhileActive,
-  usePollListsByStatus,
 } from '@/hooks/usePollListsWhileActive';
+import { useOperationsLists } from '@/hooks/useOperationsLists';
 import { useTriggerSyncMutation } from '@/store/api/syncApi';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { useListClientsQuery } from '@/store/api/clientsApi';
@@ -196,6 +196,7 @@ export function ListsPage() {
   const { data: listYearsData } = useListYearsQuery(
     clientIdFilter ? { clientId: clientIdFilter } : undefined,
   );
+  // /lists/years is required — paginated table data cannot expose all historical years.
   const noticeTypeOptions = useMemo(() => {
     const types = noticeTypesData ?? [];
     if (clientIdFilter) {
@@ -204,14 +205,11 @@ export function ListsPage() {
     return mergeNoticeTypes(types);
   }, [noticeTypesData, clientIdFilter]);
 
-  const { data: importingOps } = usePollListsByStatus(
-    { clientId: clientIdFilter, status: 'IMPORTING', limit: 50 },
-    opsPollForced,
-  );
-  const { data: syncingOps } = usePollListsByStatus(
-    { clientId: clientIdFilter, status: 'SYNCING', limit: 50 },
-    opsPollForced,
-  );
+  const { importing: importingLists, syncing: syncingLists, data: opsData } =
+    useOperationsLists({
+      clientId: clientIdFilter,
+      forcePoll: opsPollForced,
+    });
 
   const { data, isLoading, isFetching } = usePollListsWhileActive(
     {
@@ -228,8 +226,6 @@ export function ListsPage() {
     { forcePoll: opsPollForced },
   );
 
-  const importingLists = importingOps?.data ?? [];
-  const syncingLists = syncingOps?.data ?? [];
   const prevSyncingCountRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -242,11 +238,14 @@ export function ListsPage() {
 
   const liveListById = useMemo(() => {
     const map = new Map<string, List>();
-    for (const l of importingOps?.data ?? []) map.set(l._id, l);
-    for (const l of syncingOps?.data ?? []) map.set(l._id, l);
+    for (const l of opsData?.data ?? []) {
+      if (l.status === 'IMPORTING' || l.status === 'SYNCING') {
+        map.set(l._id, l);
+      }
+    }
     for (const l of data?.data ?? []) map.set(l._id, l);
     return map;
-  }, [importingOps?.data, syncingOps?.data, data?.data]);
+  }, [opsData?.data, data?.data]);
 
   useEffect(() => {
     if (!opsPollForced) return;

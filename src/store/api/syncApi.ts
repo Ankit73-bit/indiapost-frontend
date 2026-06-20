@@ -22,7 +22,11 @@ export const syncApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, body) => [
         { type: 'SyncJob', id: 'LIST' },
         { type: 'List', id: 'LIST' },
+        { type: 'List', id: 'STATS_ALL' },
         ...(body.listId ? [{ type: 'List' as const, id: body.listId }] : []),
+        ...(body.clientId
+          ? [{ type: 'List' as const, id: `STATS_${body.clientId}` }]
+          : []),
         { type: 'FailedArticle', id: 'LIST' },
       ],
     }),
@@ -40,7 +44,9 @@ export const syncApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, body) => [
         { type: 'SyncJob', id: 'LIST' },
         { type: 'List', id: 'LIST' },
+        { type: 'List', id: 'STATS_ALL' },
         { type: 'List', id: body.listId },
+        { type: 'List', id: `STATS_${body.clientId}` },
         { type: 'Article', id: 'LIST' },
         { type: 'FailedArticle', id: 'LIST' },
       ],

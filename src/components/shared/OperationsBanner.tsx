@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAppSelector } from '@/store';
-import { usePollListsWhileActive } from '@/hooks/usePollListsWhileActive';
+import { useOperationsLists } from '@/hooks/useOperationsLists';
 import { importPercent, syncPercent } from '@/lib/listProgress';
 import { listDisplayName } from '@/lib/listNaming';
 import { isFullWidthAppRoute } from '@/lib/appLayout';
@@ -12,12 +12,7 @@ export function OperationsBanner() {
   const location = useLocation();
   const user = useAppSelector((s) => s.auth.user);
   const isAdmin = user?.role === 'admin';
-  const clientId = !isAdmin ? (user?.clientId ?? undefined) : undefined;
-
-  const { data } = usePollListsWhileActive({ clientId, limit: 100 });
-
-  const importing = data?.data.filter((l) => l.status === 'IMPORTING') ?? [];
-  const syncing = data?.data.filter((l) => l.status === 'SYNCING') ?? [];
+  const { importing, syncing } = useOperationsLists();
   const activeCount = importing.length + syncing.length;
 
   if (activeCount === 0) return null;

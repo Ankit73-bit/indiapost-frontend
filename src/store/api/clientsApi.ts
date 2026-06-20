@@ -2,6 +2,7 @@ import { baseApi } from './baseApi';
 import type {
   ApiSuccess,
   Client,
+  ClientSummaryStats,
   CreateClientBody,
   UpdateClientBody,
   ListClientsQuery,
@@ -34,6 +35,12 @@ export const clientsApi = baseApi.injectEndpoints({
           : [{ type: 'Client', id: 'LIST' }],
     }),
 
+    getClientStats: build.query<ClientSummaryStats, void>({
+      query: () => '/api/v1/clients/stats',
+      transformResponse: (res: ApiSuccess<ClientSummaryStats>) => res.data,
+      providesTags: [{ type: 'Client', id: 'STATS' }],
+    }),
+
     getClient: build.query<Client, string>({
       query: (clientId) => `/api/v1/clients/${clientId}`,
       transformResponse: (res: ApiSuccess<Client>) => res.data,
@@ -43,7 +50,7 @@ export const clientsApi = baseApi.injectEndpoints({
     createClient: build.mutation<Client, CreateClientBody>({
       query: (body) => ({ url: '/api/v1/clients', method: 'POST', body }),
       transformResponse: (res: ApiSuccess<Client>) => res.data,
-      invalidatesTags: [{ type: 'Client', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Client', id: 'LIST' }, { type: 'Client', id: 'STATS' }],
     }),
 
     updateClient: build.mutation<
@@ -59,6 +66,7 @@ export const clientsApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, { clientId }) => [
         { type: 'Client', id: clientId },
         { type: 'Client', id: 'LIST' },
+        { type: 'Client', id: 'STATS' },
       ],
     }),
 
@@ -71,6 +79,7 @@ export const clientsApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, clientId) => [
         { type: 'Client', id: clientId },
         { type: 'Client', id: 'LIST' },
+        { type: 'Client', id: 'STATS' },
       ],
     }),
 
@@ -83,6 +92,7 @@ export const clientsApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, clientId) => [
         { type: 'Client', id: clientId },
         { type: 'Client', id: 'LIST' },
+        { type: 'Client', id: 'STATS' },
       ],
     }),
 
@@ -97,6 +107,7 @@ export const clientsApi = baseApi.injectEndpoints({
       invalidatesTags: (_r, _e, clientId) => [
         { type: 'Client', id: clientId },
         { type: 'Client', id: 'LIST' },
+        { type: 'Client', id: 'STATS' },
         { type: 'List', id: 'LIST' },
       ],
     }),
@@ -105,6 +116,7 @@ export const clientsApi = baseApi.injectEndpoints({
 
 export const {
   useListClientsQuery,
+  useGetClientStatsQuery,
   useGetClientQuery,
   useCreateClientMutation,
   useUpdateClientMutation,
