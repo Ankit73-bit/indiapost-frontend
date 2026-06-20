@@ -1,12 +1,8 @@
 import { getApiBaseUrl } from './apiBase';
+import { credFetch } from './fetchCredentials';
 import type { BulkExportFilters } from './exportList';
 
 const API_BASE = getApiBaseUrl();
-
-function authHeaders(): HeadersInit {
-  const token = localStorage.getItem('ip_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 export type PdfZipJobStatus = {
   jobId: string;
@@ -68,10 +64,9 @@ export async function startPdfZipJob(
   clientId: string,
   articleNumbers?: string[],
 ): Promise<PdfZipJobStatus> {
-  const res = await fetch(`${API_BASE}/api/v1/lists/${listId}/pdfs/download-jobs`, {
+  const res = await credFetch(`${API_BASE}/api/v1/lists/${listId}/pdfs/download-jobs`, {
     method: 'POST',
     headers: {
-      ...authHeaders(),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -94,9 +89,8 @@ export async function fetchPdfZipJob(
   jobId: string,
 ): Promise<PdfZipJobStatus> {
   const params = new URLSearchParams({ clientId });
-  const res = await fetch(
+  const res = await credFetch(
     `${API_BASE}/api/v1/lists/${listId}/pdfs/download-jobs/${jobId}?${params}`,
-    { headers: authHeaders() },
   );
 
   if (!res.ok) {
@@ -112,12 +106,11 @@ export async function cancelPdfZipJob(
   clientId: string,
   jobId: string,
 ): Promise<void> {
-  const res = await fetch(
+  const res = await credFetch(
     `${API_BASE}/api/v1/lists/${listId}/pdfs/download-jobs/${jobId}`,
     {
       method: 'DELETE',
       headers: {
-        ...authHeaders(),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ clientId }),
@@ -144,9 +137,8 @@ async function downloadPdfZipJobFile(
   fileName: string,
 ): Promise<void> {
   const params = new URLSearchParams({ clientId });
-  const res = await fetch(
+  const res = await credFetch(
     `${API_BASE}/api/v1/lists/${listId}/pdfs/download-jobs/${jobId}/file?${params}`,
-    { headers: authHeaders() },
   );
 
   if (!res.ok) {
@@ -171,12 +163,11 @@ export async function notifyPdfZipJobComplete(
   clientId: string,
   jobId: string,
 ): Promise<void> {
-  await fetch(
+  await credFetch(
     `${API_BASE}/api/v1/lists/${listId}/pdfs/download-jobs/${jobId}/complete`,
     {
       method: 'POST',
       headers: {
-        ...authHeaders(),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ clientId }),
@@ -257,10 +248,9 @@ function bulkFiltersBody(filters: BulkExportFilters): Record<string, unknown> {
 export async function startBulkPdfZipJob(
   filters: BulkExportFilters,
 ): Promise<PdfZipJobStatus> {
-  const res = await fetch(`${API_BASE}/api/v1/lists/pdfs/bulk-download-jobs`, {
+  const res = await credFetch(`${API_BASE}/api/v1/lists/pdfs/bulk-download-jobs`, {
     method: 'POST',
     headers: {
-      ...authHeaders(),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(bulkFiltersBody(filters)),
@@ -279,9 +269,8 @@ export async function fetchBulkPdfZipJob(
   jobId: string,
 ): Promise<PdfZipJobStatus> {
   const params = new URLSearchParams({ clientId });
-  const res = await fetch(
+  const res = await credFetch(
     `${API_BASE}/api/v1/lists/pdfs/bulk-download-jobs/${jobId}?${params}`,
-    { headers: authHeaders() },
   );
 
   if (!res.ok) {
@@ -296,12 +285,11 @@ export async function cancelBulkPdfZipJob(
   clientId: string,
   jobId: string,
 ): Promise<void> {
-  const res = await fetch(
+  const res = await credFetch(
     `${API_BASE}/api/v1/lists/pdfs/bulk-download-jobs/${jobId}`,
     {
       method: 'DELETE',
       headers: {
-        ...authHeaders(),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ clientId }),
@@ -319,9 +307,8 @@ async function downloadBulkPdfZipJobFile(
   fileName: string,
 ): Promise<void> {
   const params = new URLSearchParams({ clientId });
-  const res = await fetch(
+  const res = await credFetch(
     `${API_BASE}/api/v1/lists/pdfs/bulk-download-jobs/${jobId}/file?${params}`,
-    { headers: authHeaders() },
   );
 
   if (!res.ok) {
@@ -338,12 +325,11 @@ export async function notifyBulkPdfZipJobComplete(
   clientId: string,
   jobId: string,
 ): Promise<void> {
-  await fetch(
+  await credFetch(
     `${API_BASE}/api/v1/lists/pdfs/bulk-download-jobs/${jobId}/complete`,
     {
       method: 'POST',
       headers: {
-        ...authHeaders(),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ clientId }),

@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from './apiBase';
+import { credFetch } from './fetchCredentials';
 
 export interface ListExportFilters {
   status?: string;
@@ -19,10 +20,7 @@ export interface BulkExportFilters {
 }
 
 async function downloadExcel(url: string, filename: string): Promise<void> {
-  const token = localStorage.getItem('ip_token');
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await credFetch(url);
   if (!res.ok) throw new Error('Export failed');
 
   const blob = await res.blob();

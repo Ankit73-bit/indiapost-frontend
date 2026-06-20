@@ -5,6 +5,7 @@ import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { SidebarNav } from '@/components/layout/SidebarNav';
 import { useAppDispatch, useAppSelector } from '@/store';
 import { clearCredentials } from '@/store/authSlice';
+import { useLogoutMutation } from '@/store/api/authApi';
 
 interface SidebarContentProps {
   onNavigate?: () => void;
@@ -17,8 +18,15 @@ export function SidebarContent({ onNavigate, className }: SidebarContentProps) {
   const user = useAppSelector((s) => s.auth.user);
   const isAdmin = user?.role === 'admin';
 
-  function handleLogout() {
+  const [logout] = useLogoutMutation();
+
+  async function handleLogout() {
     onNavigate?.();
+    try {
+      await logout().unwrap();
+    } catch {
+      // Clear local state even if the server call fails
+    }
     dispatch(clearCredentials());
     navigate('/login');
   }

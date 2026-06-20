@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLoginMutation } from '@/store/api/authApi';
-import { setCredentials } from '@/store/authSlice';
+import { setUser } from '@/store/authSlice';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { useAppDispatch, useAppSelector } from '@/store';
 
@@ -21,12 +21,13 @@ type FormValues = z.infer<typeof schema>;
 export function LoginPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const token = useAppSelector((s) => s.auth.token);
+  const user = useAppSelector((s) => s.auth.user);
+  const sessionChecked = useAppSelector((s) => s.auth.sessionChecked);
   const [login, { isLoading, error }] = useLoginMutation();
 
   useEffect(() => {
-    if (token) navigate('/', { replace: true });
-  }, [token, navigate]);
+    if (sessionChecked && user) navigate('/', { replace: true });
+  }, [sessionChecked, user, navigate]);
 
   const {
     register,
@@ -39,7 +40,7 @@ export function LoginPage() {
   async function onSubmit(values: FormValues) {
     try {
       const res = await login(values).unwrap();
-      dispatch(setCredentials({ token: res.data.token }));
+      dispatch(setUser(res.data.user));
       navigate('/');
     } catch {
       // error is handled via RTK error state below

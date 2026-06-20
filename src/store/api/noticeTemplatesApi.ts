@@ -168,7 +168,6 @@ export const {
 } = noticeTemplatesApi;
 
 export async function fetchNoticeTestPdf(
-  token: string,
   templateId: string,
   version: string,
   options?: {
@@ -177,12 +176,12 @@ export async function fetchNoticeTestPdf(
   },
 ): Promise<Blob> {
   const { getApiBaseUrl } = await import('@/lib/apiBase');
-  const res = await fetch(
+  const { credFetch } = await import('@/lib/fetchCredentials');
+  const res = await credFetch(
     `${getApiBaseUrl()}/api/v1/notice-templates/${templateId}/versions/${version}/test-pdf`,
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -201,22 +200,21 @@ export async function fetchNoticeTestPdf(
 }
 
 export async function fetchNoticeTestPdfFromSpreadsheet(
-  token: string,
   templateId: string,
   version: string,
   file: File,
   rowIndex = 0,
 ): Promise<{ blob: Blob; rowJson?: string }> {
   const { getApiBaseUrl } = await import('@/lib/apiBase');
+  const { credFetch } = await import('@/lib/fetchCredentials');
   const form = new FormData();
   form.append('file', file);
   form.append('rowIndex', String(rowIndex));
 
-  const res = await fetch(
+  const res = await credFetch(
     `${getApiBaseUrl()}/api/v1/notice-templates/${templateId}/versions/${version}/test-pdf/upload`,
     {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
       body: form,
     },
   );

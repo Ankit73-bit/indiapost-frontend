@@ -16,7 +16,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
+  user: AuthUser;
 }
 
 // ─── API Response wrappers ────────────────────────────────────────────────────

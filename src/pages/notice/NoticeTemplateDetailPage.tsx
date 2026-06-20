@@ -2,14 +2,12 @@ import { Link, useParams } from 'react-router-dom';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { NoticeTemplateVersionWorkspace } from '@/components/notice/NoticeTemplateVersionWorkspace';
 import { useNoticeClientContext } from '@/hooks/useNoticeClientContext';
-import { useAppSelector } from '@/store';
 import {
   useGetNoticeTemplateQuery,
 } from '@/store/api/noticeTemplatesApi';
 
 export function NoticeTemplateDetailPage() {
   const { templateId = '' } = useParams();
-  const token = useAppSelector((s) => s.auth.token);
   const { isAdmin, clientId } = useNoticeClientContext();
 
   const { data: template, isLoading, isError, refetch } = useGetNoticeTemplateQuery(
@@ -58,7 +56,6 @@ export function NoticeTemplateDetailPage() {
 
       <NoticeTemplateVersionWorkspace
         template={template}
-        token={token}
         onUpdated={() => void refetch()}
       />
     </div>

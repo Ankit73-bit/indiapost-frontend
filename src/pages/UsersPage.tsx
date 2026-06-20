@@ -64,7 +64,6 @@ function RegisterUserDialog({
   clientOptions: { _id: string; name: string }[];
 }) {
   const apiUrl = getApiBaseUrl() || window.location.origin;
-  const token = useAppSelector((s) => s.auth.token);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const {
@@ -86,9 +85,9 @@ function RegisterUserDialog({
     try {
       const res = await fetch(`${apiUrl}/api/v1/auth/register`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(values),
       });

@@ -3,6 +3,7 @@ import { Toaster } from 'sonner';
 import { Provider } from 'react-redux';
 import { store } from '@/store';
 import { ThemeProvider, useTheme } from '@/components/theme/ThemeProvider';
+import { SessionProvider } from '@/components/auth/SessionProvider';
 import { AppShell } from '@/components/layout/AppShell';
 import { LoginPage }     from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/DashboardPage';
@@ -53,6 +54,7 @@ export default function App() {
       <ThemeProvider>
         <ThemedToaster />
         <BrowserRouter>
+        <SessionProvider>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
 
@@ -81,6 +83,7 @@ export default function App() {
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </SessionProvider>
         </BrowserRouter>
       </ThemeProvider>
     </Provider>

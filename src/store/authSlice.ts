@@ -1,42 +1,48 @@
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type { AuthUser } from '@/types';
+import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
+import type { AuthUser, PublicUser } from '@/types';
 
 interface AuthState {
-  token: string | null;
   user: AuthUser | null;
+  /** True once the initial session check (GET /users/me) has finished. */
+  sessionChecked: boolean;
 }
 
-function parseJwtPayload(token: string): AuthUser | null {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return {
-      id:       payload.sub as string,
-      email:    payload.email as string,
-      name:     payload.name as string | undefined,
-      role:     payload.role as AuthUser['role'],
-      clientId: (payload.clientId as string | null) ?? null,
-    };
-  } catch {
-    return null;
-  }
+function toAuthUser(user: PublicUser): AuthUser {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    clientId: user.clientId,
+  };
 }
-
-const storedToken = localStorage.getItem('ip_token');
 
 const initialState: AuthState = {
-  token: storedToken,
-  user:  storedToken ? parseJwtPayload(storedToken) : null,
+  user: null,
+  sessionChecked: false,
 };
+
+export const restoreSession = createAsyncThunk(
+  'auth/restoreSession',
+  async (_, { dispatch }) => {
+    const { usersApi } = await import('./api/usersApi');
+    try {
+      const user = await dispatch(
+        usersApi.endpoints.getMe.initiate(undefined, { forceRefetch: true }),
+      ).unwrap();
+      return toAuthUser(user);
+    } catch {
+      return null;
+    }
+  },
+);
 
 const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    setCredentials(state, action: PayloadAction<{ token: string }>) {
-      const { token } = action.payload;
-      state.token = token;
-      state.user  = parseJwtPayload(token);
-      localStorage.setItem('ip_token', token);
+    setUser(state, action: PayloadAction<AuthUser>) {
+      state.user = action.payload;
     },
     updateUser(state, action: PayloadAction<{ name?: string }>) {
       if (state.user) {
@@ -44,12 +50,21 @@ const authSlice = createSlice({
       }
     },
     clearCredentials(state) {
-      state.token = null;
-      state.user  = null;
-      localStorage.removeItem('ip_token');
+      state.user = null;
     },
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(restoreSession.fulfilled, (state, action) => {
+        state.user = action.payload;
+        state.sessionChecked = true;
+      })
+      .addCase(restoreSession.rejected, (state) => {
+        state.user = null;
+        state.sessionChecked = true;
+      });
   },
 });
 
-export const { setCredentials, updateUser, clearCredentials } = authSlice.actions;
+export const { setUser, updateUser, clearCredentials } = authSlice.actions;
 export default authSlice.reducer;

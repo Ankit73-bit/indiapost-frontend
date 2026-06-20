@@ -12,7 +12,7 @@ import { useAppSelector } from '@/store';
 import { isFullWidthAppRoute } from '@/lib/appLayout';
 
 export function AppShell() {
-  const token = useAppSelector((s) => s.auth.token);
+  const user = useAppSelector((s) => s.auth.user);
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
@@ -20,7 +20,7 @@ export function AppShell() {
     setMobileNavOpen(false);
   }, [location.pathname]);
 
-  if (!token) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" replace />;
 
   const isFullWidth = isFullWidthAppRoute(location.pathname);
 

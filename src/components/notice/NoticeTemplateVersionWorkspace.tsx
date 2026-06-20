@@ -43,13 +43,11 @@ import { cn } from '@/lib/utils';
 
 interface NoticeTemplateVersionWorkspaceProps {
   template: NoticeTemplate;
-  token: string | null;
   onUpdated: (template: NoticeTemplate) => void;
 }
 
 export function NoticeTemplateVersionWorkspace({
   template,
-  token,
   onUpdated,
 }: NoticeTemplateVersionWorkspaceProps) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -229,13 +227,11 @@ export function NoticeTemplateVersionWorkspace({
   }
 
   async function handleTestPdf(generateSample = false) {
-    if (!token) return;
     setTestingPdf(true);
     try {
       let blob: Blob;
       if (testSpreadsheet) {
         const result = await fetchNoticeTestPdfFromSpreadsheet(
-          token,
           template._id,
           selectedVersion,
           testSpreadsheet,
@@ -243,12 +239,12 @@ export function NoticeTemplateVersionWorkspace({
         blob = result.blob;
         if (result.rowJson) setTestRowJson(result.rowJson);
       } else if (generateSample) {
-        blob = await fetchNoticeTestPdf(token, template._id, selectedVersion, {
+        blob = await fetchNoticeTestPdf(template._id, selectedVersion, {
           generateSample: true,
         });
       } else {
         const row = JSON.parse(testRowJson) as Record<string, string>;
-        blob = await fetchNoticeTestPdf(token, template._id, selectedVersion, {
+        blob = await fetchNoticeTestPdf(template._id, selectedVersion, {
           row,
         });
       }

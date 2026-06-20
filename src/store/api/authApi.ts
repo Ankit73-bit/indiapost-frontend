@@ -1,5 +1,5 @@
 import { baseApi } from './baseApi';
-import type { ApiSuccess, LoginRequest, LoginResponse } from '@/types';
+import type { ApiSuccess, AuthUser, LoginRequest, LoginResponse } from '@/types';
 
 export const authApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -10,7 +10,23 @@ export const authApi = baseApi.injectEndpoints({
         body,
       }),
     }),
+    logout: build.mutation<ApiSuccess<{ loggedOut: boolean }>, void>({
+      query: () => ({
+        url: '/api/v1/auth/logout',
+        method: 'POST',
+      }),
+    }),
+    refreshSession: build.mutation<ApiSuccess<{ user: AuthUser }>, void>({
+      query: () => ({
+        url: '/api/v1/auth/refresh',
+        method: 'POST',
+      }),
+    }),
   }),
 });
 
-export const { useLoginMutation } = authApi;
+export const {
+  useLoginMutation,
+  useLogoutMutation,
+  useRefreshSessionMutation,
+} = authApi;

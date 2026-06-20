@@ -1,11 +1,7 @@
 import { getApiBaseUrl } from './apiBase';
+import { credFetch } from './fetchCredentials';
 
 const API_BASE = getApiBaseUrl();
-
-function authHeaders(): HeadersInit {
-  const token = localStorage.getItem('ip_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 export function listPdfUrl(
   listId: string,
@@ -24,9 +20,7 @@ export async function fetchPdfBlob(
   clientId: string,
   inline = false,
 ): Promise<Blob> {
-  const res = await fetch(listPdfUrl(listId, articleNumber, clientId, inline), {
-    headers: authHeaders(),
-  });
+  const res = await credFetch(listPdfUrl(listId, articleNumber, clientId, inline));
   if (!res.ok) {
     let message = 'Failed to load PDF';
     try {
@@ -79,10 +73,9 @@ export async function downloadPdfsZip(
   listSlug: string,
   articleNumbers?: string[],
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/v1/lists/${listId}/pdfs/download`, {
+  const res = await credFetch(`${API_BASE}/api/v1/lists/${listId}/pdfs/download`, {
     method: 'POST',
     headers: {
-      ...authHeaders(),
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
