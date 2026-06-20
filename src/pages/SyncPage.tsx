@@ -29,6 +29,7 @@ import { useAppDispatch, useAppSelector } from '@/store';
 import { ClientFilterSelect, SearchableClientSelect } from '@/components/shared/SearchableClientSelect';
 import { FilterSheetButton, FilterField } from '@/components/shared/FilterSheetButton';
 import { HelpTooltip } from '@/components/shared/HelpTooltip';
+import { isSearchableSelectMenuTarget } from '@/lib/searchableSelect';
 import { listDisplayName } from '@/lib/listNaming';
 import {
   syncApi,
@@ -969,7 +970,19 @@ export function SyncPage() {
       </Tabs>
 
       <Dialog open={triggerDialogOpen} onOpenChange={setTriggerDialogOpen}>
-        <DialogContent className="sm:max-w-md overflow-visible">
+        <DialogContent
+          className="sm:max-w-md overflow-visible"
+          onInteractOutside={(e) => {
+            if (isSearchableSelectMenuTarget(e.target)) {
+              e.preventDefault();
+            }
+          }}
+          onPointerDownOutside={(e) => {
+            if (isSearchableSelectMenuTarget(e.target)) {
+              e.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>Sync</DialogTitle>
           </DialogHeader>
@@ -979,7 +992,7 @@ export function SyncPage() {
               <HelpTooltip content={scopeHint} />
             </div>
 
-            <div className="space-y-1.5">
+            <div className="relative space-y-1.5 overflow-visible">
               <label className="text-xs font-medium text-muted-foreground">
                 Client
               </label>
@@ -990,6 +1003,7 @@ export function SyncPage() {
                 showAllOption={false}
                 className="w-full"
                 placeholder="Select client"
+                portaled={false}
               />
             </div>
 
