@@ -30,6 +30,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { TableShell } from '@/components/shared/TableShell';
+import { PageHeader } from '@/components/shared/PageHeader';
+import { Badge } from '@/components/ui/badge';
 import { ListTrackingRetentionBadge } from '@/components/shared/ListTrackingRetentionBadge';
 import { ConfirmDeleteDialog } from '@/components/shared/ConfirmDeleteDialog';
 import { ConfirmActionDialog } from '@/components/shared/ConfirmActionDialog';
@@ -38,7 +40,10 @@ import {
   SearchableNoticeTypeSelect,
   ALL_NOTICE_TYPES,
 } from '@/components/shared/SearchableNoticeTypeSelect';
-import { FilterSheetButton, FilterField } from '@/components/shared/FilterSheetButton';
+import {
+  FilterSheetButton,
+  FilterField,
+} from '@/components/shared/FilterSheetButton';
 import { HelpTooltip } from '@/components/shared/HelpTooltip';
 import { NoticeTypeCombobox } from '@/components/shared/NoticeTypeCombobox';
 import { OperationProgressBar } from '@/components/shared/OperationProgressBar';
@@ -59,9 +64,7 @@ import {
 } from '@/lib/listProgress';
 import { ListStatusBadge } from '@/components/shared/StatusBadge';
 import { Pagination } from '@/components/shared/Pagination';
-import {
-  usePollListsWhileActive,
-} from '@/hooks/usePollListsWhileActive';
+import { usePollListsWhileActive } from '@/hooks/usePollListsWhileActive';
 import { useOperationsLists } from '@/hooks/useOperationsLists';
 import { useTriggerSyncMutation } from '@/store/api/syncApi';
 import { useAppDispatch, useAppSelector } from '@/store';
@@ -131,8 +134,7 @@ export function ListsPage() {
     : (yearParam ?? String(currentYear()));
   const filterMonth = searchParams.get('month') ?? '';
   const filterNoticeType = searchParams.get('noticeType') ?? '';
-  const sortOrder =
-    searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
+  const sortOrder = searchParams.get('sortOrder') === 'asc' ? 'asc' : 'desc';
 
   useEffect(() => {
     if (!searchParams.has('year')) {
@@ -147,6 +149,7 @@ export function ListsPage() {
     () => searchParams.get('search') ?? '',
   );
   const [search, setSearch] = useState(() => searchParams.get('search') ?? '');
+  const skipSearchDebounceRef = useRef(false);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<List | null>(null);
@@ -166,6 +169,10 @@ export function ListsPage() {
   const [opsPollForced, setOpsPollForced] = useState(false);
 
   useEffect(() => {
+    if (skipSearchDebounceRef.current) {
+      skipSearchDebounceRef.current = false;
+      return;
+    }
     const timer = setTimeout(() => {
       const trimmed = searchInput.trim();
       setSearch(trimmed);
@@ -199,16 +206,21 @@ export function ListsPage() {
   const noticeTypeOptions = useMemo(() => {
     const types = noticeTypesData ?? [];
     if (clientIdFilter) {
-      return [...new Set(types.map((t) => t.trim().toUpperCase()).filter(Boolean))].sort();
+      return [
+        ...new Set(types.map((t) => t.trim().toUpperCase()).filter(Boolean)),
+      ].sort();
     }
     return mergeNoticeTypes(types);
   }, [noticeTypesData, clientIdFilter]);
 
-  const { importing: importingLists, syncing: syncingLists, data: opsData } =
-    useOperationsLists({
-      clientId: clientIdFilter,
-      forcePoll: opsPollForced,
-    });
+  const {
+    importing: importingLists,
+    syncing: syncingLists,
+    data: opsData,
+  } = useOperationsLists({
+    clientId: clientIdFilter,
+    forcePoll: opsPollForced,
+  });
 
   const { data, isLoading, isFetching } = usePollListsWhileActive(
     {
@@ -262,31 +274,35 @@ export function ListsPage() {
     return [...years].sort((a, b) => b - a);
   }, [listYearsData]);
 
+  const isNonDefaultYear =
+    showAllYears || (yearParam != null && yearParam !== String(currentYear()));
+
   const hasFilters = Boolean(
     search ||
     filterMonth ||
     filterNoticeType ||
     clientIdFilter ||
-    showAllYears ||
-    (!showAllYears &&
-      yearParam !== null &&
-      yearParam !== String(currentYear())),
+    isNonDefaultYear ||
+    sortOrder === 'asc',
   );
 
   const filterActiveCount = [
     clientIdFilter,
     filterMonth,
     filterNoticeType,
-    showAllYears ||
-      (yearParam !== null && yearParam !== String(currentYear())),
+    isNonDefaultYear,
   ].filter(Boolean).length;
+
+  function applySearchParams(next: URLSearchParams) {
+    setSearchParams(next, { replace: true });
+    setPage(1);
+  }
 
   function setClientFilter(clientId: string | undefined) {
     const next = new URLSearchParams(searchParams);
     if (clientId) next.set('clientId', clientId);
     else next.delete('clientId');
-    setSearchParams(next, { replace: true });
-    setPage(1);
+    applySearchParams(next);
   }
 
   function patchFilters(updates: Record<string, string | null>) {
@@ -295,19 +311,103 @@ export function ListsPage() {
       if (!value) next.delete(key);
       else next.set(key, value);
     }
-    setSearchParams(next, { replace: true });
-    setPage(1);
+    applySearchParams(next);
+  }
+
+  function clearSearch() {
+    skipSearchDebounceRef.current = true;
+    setSearchInput('');
+    setSearch('');
+    const next = new URLSearchParams(searchParams);
+    next.delete('search');
+    applySearchParams(next);
   }
 
   function clearFilters() {
+    skipSearchDebounceRef.current = true;
     setSearchInput('');
     setSearch('');
     const next = new URLSearchParams();
-    if (clientIdFilter) next.set('clientId', clientIdFilter);
     next.set('year', String(currentYear()));
-    setSearchParams(next, { replace: true });
-    setPage(1);
+    applySearchParams(next);
   }
+
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ key: string; label: string; onRemove: () => void }> =
+      [];
+
+    if (search) {
+      chips.push({
+        key: 'search',
+        label: `Search: ${search}`,
+        onRemove: clearSearch,
+      });
+    }
+
+    if (isAdmin && clientIdFilter) {
+      const clientName =
+        activeClients.find((c) => c._id === clientIdFilter)?.name ?? 'Client';
+      chips.push({
+        key: 'client',
+        label: clientName,
+        onRemove: () => setClientFilter(undefined),
+      });
+    }
+
+    if (showAllYears) {
+      chips.push({
+        key: 'year',
+        label: 'All years',
+        onRemove: () => patchFilters({ year: String(currentYear()) }),
+      });
+    } else if (yearParam && yearParam !== String(currentYear())) {
+      chips.push({
+        key: 'year',
+        label: `Year ${yearParam}`,
+        onRemove: () => patchFilters({ year: String(currentYear()) }),
+      });
+    }
+
+    if (filterMonth) {
+      const monthLabel =
+        MONTH_OPTIONS.find((m) => m.value === filterMonth)?.label ??
+        `Month ${filterMonth}`;
+      chips.push({
+        key: 'month',
+        label: monthLabel,
+        onRemove: () => patchFilters({ month: null }),
+      });
+    }
+
+    if (filterNoticeType) {
+      chips.push({
+        key: 'noticeType',
+        label: filterNoticeType,
+        onRemove: () => patchFilters({ noticeType: null }),
+      });
+    }
+
+    if (sortOrder === 'asc') {
+      chips.push({
+        key: 'sort',
+        label: 'Oldest first',
+        onRemove: () => patchFilters({ sortOrder: null }),
+      });
+    }
+
+    return chips;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    search,
+    clientIdFilter,
+    showAllYears,
+    yearParam,
+    filterMonth,
+    filterNoticeType,
+    sortOrder,
+    isAdmin,
+    activeClients,
+  ]);
 
   function resolveClientSlug(clientId: string): string | undefined {
     return (
@@ -579,24 +679,6 @@ export function ListsPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setExportDialogOpen(true)}
-          disabled={customerInactive || activeClients.length === 0}
-        >
-          <Download className="mr-1.5 h-3.5 w-3.5" /> Export
-        </Button>
-        <Button
-          size="sm"
-          onClick={openCreate}
-          disabled={customerInactive || activeClients.length === 0}
-        >
-          <Plus className="mr-1.5 h-3.5 w-3.5" /> New List
-        </Button>
-      </div>
-
       {customerInactive && (
         <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           Your client account is deactivated. Lists are hidden until an admin
@@ -613,7 +695,8 @@ export function ListsPage() {
           </p>
           {importingLists.some((l) => isProgressStuck(l.importProgress)) && (
             <p className="mt-1 text-xs text-amber-800/90 font-medium">
-              Progress stalled — use Cancel in the row menu to reset and upload again.
+              Progress stalled — use Cancel in the row menu to reset and upload
+              again.
             </p>
           )}
         </div>
@@ -636,149 +719,209 @@ export function ListsPage() {
       )}
 
       {/* Search & filters */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by list name, client…"
-            className="pl-8"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-          {isFetching && !isLoading && (
-            <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
-          )}
-        </div>
+      <div className="rounded-lg border border-border bg-card p-3 sm:p-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* ── Primary actions live here, co-located with search ── */}
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by list name, client…"
+              className="pl-8 pr-8"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+            {searchInput && (
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                onClick={clearSearch}
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+            {isFetching && !isLoading && !searchInput && (
+              <Loader2 className="absolute right-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
 
-        <FilterSheetButton
-          activeCount={filterActiveCount}
-          onClear={clearFilters}
-          clearDisabled={!hasFilters}
-          description="Narrow lists by client, date, or notice type."
-        >
-          {isAdmin && (
+          <FilterSheetButton
+            activeCount={filterActiveCount}
+            onClear={clearFilters}
+            clearDisabled={!hasFilters}
+            description="Narrow lists by client, date, or notice type."
+          >
+            {isAdmin && (
+              <FilterField
+                label="Client"
+                hint={
+                  <HelpTooltip content="Filter lists to a single client organization." />
+                }
+              >
+                <SearchableClientSelect
+                  clients={activeClients}
+                  value={clientIdFilter}
+                  onChange={setClientFilter}
+                  className="w-full"
+                  portaled={false}
+                />
+              </FilterField>
+            )}
+
             <FilterField
-              label="Client"
+              label="Year"
               hint={
-                <HelpTooltip content="Filter lists to a single client organization." />
+                <HelpTooltip content="Filter by notice date year. Defaults to the current year." />
               }
             >
-              <SearchableClientSelect
-                clients={activeClients}
-                value={clientIdFilter}
-                onChange={setClientFilter}
+              <Select
+                value={showAllYears ? ALL_YEARS : filterYear}
+                onValueChange={(v) =>
+                  patchFilters({ year: v === ALL_YEARS ? 'all' : v })
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value={ALL_YEARS}>All years</SelectItem>
+                </SelectContent>
+              </Select>
+            </FilterField>
+
+            <FilterField label="Month">
+              <Select
+                value={filterMonth || ALL_MONTHS}
+                onValueChange={(v) => {
+                  const month = v === ALL_MONTHS ? null : v;
+                  const updates: Record<string, string | null> = { month };
+                  if (month && (showAllYears || !searchParams.has('year'))) {
+                    updates.year = String(currentYear());
+                  }
+                  patchFilters(updates);
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Month" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_MONTHS}>All months</SelectItem>
+                  {MONTH_OPTIONS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FilterField>
+
+            <FilterField
+              label="Notice type"
+              hint={
+                <HelpTooltip content="Filter by notice type code used when the list was created." />
+              }
+            >
+              <SearchableNoticeTypeSelect
+                options={noticeTypeOptions}
+                value={filterNoticeType || ALL_NOTICE_TYPES}
+                onChange={(v) =>
+                  patchFilters({
+                    noticeType: v === ALL_NOTICE_TYPES ? null : v,
+                  })
+                }
                 className="w-full"
                 portaled={false}
               />
             </FilterField>
-          )}
+          </FilterSheetButton>
 
-          <FilterField
-            label="Year"
-            hint={
-              <HelpTooltip content="Filter by notice date year. Defaults to the current year." />
+          <Button
+            variant={sortOrder === 'asc' ? 'default' : 'outline'}
+            size="sm"
+            className="gap-1.5 shrink-0"
+            title={
+              sortOrder === 'desc'
+                ? 'Sorted by newest dispatch first'
+                : 'Sorted by oldest dispatch first'
+            }
+            onClick={() =>
+              patchFilters({
+                sortOrder: sortOrder === 'desc' ? 'asc' : null,
+              })
             }
           >
-            <Select
-              value={showAllYears ? ALL_YEARS : filterYear}
-              onValueChange={(v) =>
-                patchFilters({ year: v === ALL_YEARS ? 'all' : v })
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Year" />
-              </SelectTrigger>
-              <SelectContent>
-                {yearOptions.map((y) => (
-                  <SelectItem key={y} value={String(y)}>
-                    {y}
-                  </SelectItem>
-                ))}
-                <SelectItem value={ALL_YEARS}>All years</SelectItem>
-              </SelectContent>
-            </Select>
-          </FilterField>
-
-          <FilterField label="Month">
-            <Select
-              value={filterMonth || ALL_MONTHS}
-              onValueChange={(v) => {
-                const month = v === ALL_MONTHS ? null : v;
-                const updates: Record<string, string | null> = { month };
-                if (month && (showAllYears || !searchParams.has('year'))) {
-                  updates.year = String(currentYear());
-                }
-                patchFilters(updates);
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Month" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_MONTHS}>All months</SelectItem>
-                {MONTH_OPTIONS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </FilterField>
-
-          <FilterField
-            label="Notice type"
-            hint={
-              <HelpTooltip content="Filter by notice type code used when the list was created." />
-            }
-          >
-            <SearchableNoticeTypeSelect
-              options={noticeTypeOptions}
-              value={filterNoticeType || ALL_NOTICE_TYPES}
-              onChange={(v) =>
-                patchFilters({
-                  noticeType: v === ALL_NOTICE_TYPES ? null : v,
-                })
-              }
-              className="w-full"
-              portaled={false}
-            />
-          </FilterField>
-        </FilterSheetButton>
-
-        <Button
-          variant={sortOrder === 'asc' ? 'default' : 'outline'}
-          size="sm"
-          className="gap-1.5 shrink-0"
-          title={
-            sortOrder === 'desc'
-              ? 'Sorted by newest dispatch first'
-              : 'Sorted by oldest dispatch first'
-          }
-          onClick={() =>
-            patchFilters({
-              sortOrder: sortOrder === 'desc' ? 'asc' : null,
-            })
-          }
-        >
-          {sortOrder === 'desc' ? (
-            <ArrowDownWideNarrow className="h-3.5 w-3.5" />
-          ) : (
-            <ArrowUpWideNarrow className="h-3.5 w-3.5" />
-          )}
-          {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
-        </Button>
-
-        {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            <X className="mr-1 h-3.5 w-3.5" /> Clear
+            {sortOrder === 'desc' ? (
+              <ArrowDownWideNarrow className="h-3.5 w-3.5" />
+            ) : (
+              <ArrowUpWideNarrow className="h-3.5 w-3.5" />
+            )}
+            {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
           </Button>
-        )}
 
-        {data?.meta && (
-          <span className="ml-auto text-xs text-muted-foreground">
-            {data.meta.total.toLocaleString()} list
-            {data.meta.total !== 1 ? 's' : ''}
-          </span>
+          <span className="flex-1" />
+
+          {data?.meta && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {data.meta.total.toLocaleString()} list
+              {data.meta.total !== 1 ? 's' : ''}
+            </span>
+          )}
+
+          <div className="flex items-center gap-2 border-l border-border pl-2 ml-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExportDialogOpen(true)}
+              disabled={customerInactive || activeClients.length === 0}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" /> Export
+            </Button>
+            <Button
+              size="sm"
+              onClick={openCreate}
+              disabled={customerInactive || activeClients.length === 0}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" /> New List
+            </Button>
+          </div>
+        </div>
+
+        {activeFilterChips.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+            <span className="text-xs font-medium text-muted-foreground">
+              Active filters
+            </span>
+            {activeFilterChips.map((chip) => (
+              <Badge
+                key={chip.key}
+                variant="secondary"
+                className="gap-1 pr-1 font-normal"
+              >
+                {chip.label}
+                <button
+                  type="button"
+                  className="rounded-full p-0.5 hover:bg-muted-foreground/20"
+                  onClick={chip.onRemove}
+                  aria-label={`Remove ${chip.label} filter`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={clearFilters}
+            >
+              Clear all
+            </Button>
+          </div>
         )}
       </div>
 
@@ -923,7 +1066,9 @@ export function ListsPage() {
                   <td className="px-4 py-3 text-muted-foreground">
                     <div>{formatDate(list.dispatchDate)}</div>
                     {isAdmin && (
-                      <ListTrackingRetentionBadge dispatchDate={list.dispatchDate} />
+                      <ListTrackingRetentionBadge
+                        dispatchDate={list.dispatchDate}
+                      />
                     )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground text-xs">
@@ -1196,7 +1341,8 @@ export function ListsPage() {
         noticeTypeOptions={noticeTypeOptions}
         yearOptions={yearOptions}
         currentFilters={{
-          clientId: clientIdFilter ?? (isAdmin ? undefined : authUser?.clientId),
+          clientId:
+            clientIdFilter ?? (isAdmin ? undefined : authUser?.clientId),
           year: showAllYears ? undefined : Number(filterYear),
           month: filterMonth ? Number(filterMonth) : undefined,
           noticeType: filterNoticeType || undefined,
