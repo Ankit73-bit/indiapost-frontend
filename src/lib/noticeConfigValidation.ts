@@ -13,7 +13,8 @@ export function collectConfiguredVariables(config: NoticeConfig): string[] {
   const set = new Set<string>();
   if (config.id_field) set.add(config.id_field);
   if (config.sort_field) set.add(config.sort_field);
-  for (const f of config.additional_fields ?? []) set.add(f);
+  for (const f of config.variable_fields ?? []) set.add(f);
+  for (const f of config.file_name ?? []) set.add(f);
   for (const f of config.date_fields ?? []) set.add(f);
   for (const f of config.decimal_fields ?? []) set.add(f);
   for (const list of config.list_fields ?? []) {

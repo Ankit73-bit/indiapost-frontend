@@ -209,6 +209,63 @@ export function NoticeConfigForm({
             </div>
           ))}
 
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="max_rows">Max rows</Label>
+              <Badge variant="default" className="text-[10px]">
+                Required
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Shared limit for table rows and list-field items.
+            </p>
+            <Input
+              id="max_rows"
+              type="number"
+              min={1}
+              value={values.max_rows}
+              disabled={readOnly}
+              onChange={(e) =>
+                set('max_rows', Number.parseInt(e.target.value, 10) || 20)
+              }
+              className={cn(errors.max_rows && 'border-destructive')}
+            />
+            {errors.max_rows && (
+              <p className="text-xs text-destructive">{errors.max_rows}</p>
+            )}
+          </div>
+
+          <div className="space-y-2 sm:col-span-2">
+            <div className="flex items-center gap-2">
+              <Label>Table rotation</Label>
+              <Badge variant="secondary" className="text-[10px]">
+                Optional
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Generate one PDF per applicant in the rotation table.
+            </p>
+            <div className="flex gap-2">
+              {([false, true] as const).map((v) => (
+                <button
+                  key={String(v)}
+                  type="button"
+                  disabled={readOnly}
+                  onClick={() => set('rotation', v)}
+                  className={cn(
+                    'rounded-lg border px-4 py-2 text-sm transition-colors',
+                    values.rotation === v
+                      ? 'border-primary bg-primary/10 font-medium text-primary'
+                      : 'border-border hover:bg-muted/50',
+                    readOnly && 'cursor-not-allowed opacity-60',
+                  )}
+                >
+                  {v ? 'Enabled' : 'Disabled'}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {showWithHeader && (
             <div className="space-y-2 sm:col-span-2">
               <div className="flex items-center gap-2">
@@ -246,10 +303,31 @@ export function NoticeConfigForm({
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Date output</CardTitle>
-          <CardDescription>How dates appear in generated PDFs.</CardDescription>
+          <CardTitle className="text-sm">Output & dates</CardTitle>
+          <CardDescription>
+            Filename columns and how dates are parsed and displayed.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-5">
+          <TagListField
+            label="File name columns"
+            required={false}
+            hint="Excel columns joined with underscore for the output PDF filename."
+            values={values.file_name}
+            onChange={(v) => set('file_name', v)}
+            placeholder="e.g. cuid"
+            readOnly={readOnly}
+          />
+          <div className="space-y-2">
+            <Label htmlFor="date_input_format">Date input format</Label>
+            <Input
+              id="date_input_format"
+              value={values.date_input_format}
+              disabled={readOnly}
+              onChange={(e) => set('date_input_format', e.target.value)}
+              placeholder="%Y-%m-%d"
+            />
+          </div>
           <div className="space-y-2">
             <Label>Date output style</Label>
             <select
@@ -279,11 +357,11 @@ export function NoticeConfigForm({
         </CardHeader>
         <CardContent className="space-y-5">
           <TagListField
-            label="Additional fields"
+            label="Variable fields"
             required={false}
-            hint="Extra columns passed to the template."
-            values={values.additional_fields}
-            onChange={(v) => set('additional_fields', v)}
+            hint="Scalar columns passed to the template."
+            values={values.variable_fields}
+            onChange={(v) => set('variable_fields', v)}
             readOnly={readOnly}
           />
           <TagListField
@@ -302,6 +380,35 @@ export function NoticeConfigForm({
             onChange={(v) => set('decimal_fields', v)}
             readOnly={readOnly}
           />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">PDF protection</CardTitle>
+          <CardDescription>Template defaults for encrypted PDFs.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="password_field">Password field</Label>
+            <Input
+              id="password_field"
+              value={values.password_field}
+              disabled={readOnly}
+              onChange={(e) => set('password_field', e.target.value)}
+              placeholder="Column containing per-row password"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="default_password">Default password</Label>
+            <Input
+              id="default_password"
+              value={values.default_password}
+              disabled={readOnly}
+              onChange={(e) => set('default_password', e.target.value)}
+              placeholder="Fallback when password field is empty"
+            />
+          </div>
         </CardContent>
       </Card>
 

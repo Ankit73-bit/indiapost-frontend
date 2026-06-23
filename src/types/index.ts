@@ -517,16 +517,13 @@ export interface NoticeTableConfig {
   id: string;
   placeholder_pattern: string;
   id_column: string;
-  max_rows: number;
   row_count_field?: string;
-  rotation?: boolean;
   columns: NoticeTableColumnConfig[];
 }
 
 export interface NoticeListFieldConfig {
   field_name: string;
   placeholder: string;
-  max_items?: number;
 }
 
 export type DateOutputStyle = 'dd-mm-yyyy' | 'dd-mmm-yyyy';
@@ -546,14 +543,19 @@ export interface NoticeConfig {
   with_header: boolean;
   id_field: string;
   sort_field?: string;
-  typst_template?: string;
-  additional_fields?: string[];
-  date_fields?: string[];
+  description?: string;
+  rotation?: boolean;
+  max_rows: number;
+  file_name?: string[];
+  date_input_format?: string;
   date_output_style?: DateOutputStyle;
+  variable_fields?: string[];
+  date_fields?: string[];
   decimal_fields?: string[];
   list_fields?: NoticeListFieldConfig[];
   tables?: NoticeTableConfig[];
   default_password?: string;
+  password_field?: string;
 }
 
 export interface NoticeVersionMetadata {

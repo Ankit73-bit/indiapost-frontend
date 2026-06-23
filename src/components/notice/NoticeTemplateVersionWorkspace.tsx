@@ -445,14 +445,31 @@ export function NoticeTemplateVersionWorkspace({
                         value={detailVersion.noticeConfig.sort_field ?? '—'}
                       />
                       <ConfigRow
+                        label="Max rows"
+                        value={String(detailVersion.noticeConfig.max_rows ?? 20)}
+                      />
+                      <ConfigRow
+                        label="Date input"
+                        value={detailVersion.noticeConfig.date_input_format ?? '%Y-%m-%d'}
+                      />
+                      <ConfigRow
                         label="Date output"
                         value={detailVersion.noticeConfig.date_output_style ?? 'dd-mm-yyyy'}
                       />
+                      {detailVersion.noticeConfig.rotation ? (
+                        <ConfigRow label="Rotation" value="Enabled" />
+                      ) : null}
                     </div>
-                    {detailVersion.noticeConfig.additional_fields?.length ? (
+                    {detailVersion.noticeConfig.file_name?.length ? (
                       <FieldChipList
-                        label="Additional fields"
-                        items={detailVersion.noticeConfig.additional_fields}
+                        label="File name columns"
+                        items={detailVersion.noticeConfig.file_name}
+                      />
+                    ) : null}
+                    {detailVersion.noticeConfig.variable_fields?.length ? (
+                      <FieldChipList
+                        label="Variable fields"
+                        items={detailVersion.noticeConfig.variable_fields}
                       />
                     ) : null}
                     {detailVersion.noticeConfig.date_fields?.length ? (
@@ -477,9 +494,6 @@ export function NoticeTemplateVersionWorkspace({
                           >
                             <span className="font-medium">{t.id}</span>
                             {' · '}
-                            max_rows: {t.max_rows ?? 20}
-                            {t.rotation ? ' · rotation' : ''}
-                            {' · '}
                             {t.columns.length} columns
                           </div>
                         ))}
@@ -493,7 +507,7 @@ export function NoticeTemplateVersionWorkspace({
                             key={l.placeholder}
                             className="rounded-lg border border-border px-3 py-2 text-xs font-mono"
                           >
-                            {l.field_name} → {l.placeholder} (max {l.max_items ?? 20})
+                            {l.field_name} → {l.placeholder}
                           </div>
                         ))}
                       </div>

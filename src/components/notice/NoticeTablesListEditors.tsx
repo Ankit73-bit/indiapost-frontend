@@ -80,24 +80,6 @@ export function NoticeTablesListEditors({ values, onChange, readOnly }: Props) {
                   tables[ti] = { ...table, id_column: v };
                   updateTables(tables);
                 }} readOnly={readOnly} />
-                <Field label="Max rows" value={String(table.max_rows)} onChange={(v) => {
-                  const tables = [...values.tables];
-                  tables[ti] = { ...table, max_rows: Number.parseInt(v, 10) || 20 };
-                  updateTables(tables);
-                }} readOnly={readOnly} />
-                <div className="flex items-center gap-2 pt-6">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(table.rotation)}
-                    disabled={readOnly}
-                    onChange={(e) => {
-                      const tables = [...values.tables];
-                      tables[ti] = { ...table, rotation: e.target.checked };
-                      updateTables(tables);
-                    }}
-                  />
-                  <Label className="text-sm">Table rotation</Label>
-                </div>
               </div>
               <Field
                 label="Placeholder pattern"
@@ -211,7 +193,7 @@ export function NoticeTablesListEditors({ values, onChange, readOnly }: Props) {
             <p className="text-sm text-muted-foreground">No list fields configured.</p>
           )}
           {values.list_fields.map((list, li) => (
-            <div key={li} className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-4">
+            <div key={li} className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-3">
               <Field label="Field name" value={list.field_name} onChange={(v) => {
                 const list_fields = [...values.list_fields];
                 list_fields[li] = { ...list, field_name: v };
@@ -220,11 +202,6 @@ export function NoticeTablesListEditors({ values, onChange, readOnly }: Props) {
               <Field label="Placeholder" value={list.placeholder} onChange={(v) => {
                 const list_fields = [...values.list_fields];
                 list_fields[li] = { ...list, placeholder: v };
-                updateListFields(list_fields);
-              }} readOnly={readOnly} />
-              <Field label="Max items" value={String(list.max_items ?? 20)} onChange={(v) => {
-                const list_fields = [...values.list_fields];
-                list_fields[li] = { ...list, max_items: Number.parseInt(v, 10) || 20 };
                 updateListFields(list_fields);
               }} readOnly={readOnly} />
               {!readOnly && (
