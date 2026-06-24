@@ -20,6 +20,7 @@ import { NoticeTemplateDetailPage } from '@/pages/notice/NoticeTemplateDetailPag
 import { NoticeTemplateEditorPage } from '@/pages/notice/NoticeTemplateEditorPage';
 import { NoticeConfigPage } from '@/pages/notice/NoticeConfigPage';
 import { NoticeExcelPage } from '@/pages/notice/NoticeExcelPage';
+import { NoticeTemplateMappingRoutePage } from '@/pages/notice/NoticeTemplateMappingRoutePage';
 
 // Admin-only guard
 function AdminRoute({ children }: { children: React.ReactNode }) {
@@ -72,6 +73,7 @@ export default function App() {
               <Route path="templates" element={<NoticeTemplatesListPage />} />
               <Route path="templates/new" element={<NoticeTemplateCreatePage />} />
               <Route path="templates/:templateId/editor" element={<NoticeTemplateEditorPage />} />
+              <Route path="templates/:templateId/mapping" element={<NoticeTemplateMappingRoutePage />} />
               <Route path="templates/:templateId" element={<NoticeTemplateDetailPage />} />
               <Route path="config" element={<NoticeConfigPage />} />
               <Route path="excel" element={<NoticeExcelPage />} />

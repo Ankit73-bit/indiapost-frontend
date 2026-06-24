@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Loader2, Search, MoreHorizontal, Star } from 'lucide-react';
+import { Plus, Loader2, Search, MoreHorizontal, Star, Map } from 'lucide-react';
 import { TableShell } from '@/components/shared/TableShell';
 import { Pagination } from '@/components/shared/Pagination';
 import { NoticeVersionStatusBadge } from '@/components/notice/NoticeVersionStatusBadge';
@@ -62,6 +62,17 @@ export function NoticeTemplatesListPage() {
       isAdmin && clientId
         ? `/notice-generator/templates/${id}/editor?clientId=${clientId}`
         : `/notice-generator/templates/${id}/editor`;
+    navigate(url);
+  }
+
+  function openMapping(templateId: string, version?: string) {
+    const base =
+      isAdmin && clientId
+        ? `/notice-generator/templates/${templateId}/mapping?clientId=${clientId}`
+        : `/notice-generator/templates/${templateId}/mapping`;
+    const url = version
+      ? `${base}${base.includes('?') ? '&' : '?'}version=${version}`
+      : base;
     navigate(url);
   }
 
@@ -196,6 +207,19 @@ export function NoticeTemplatesListPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openTemplate(template._id)}>
                             Open editor
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              openMapping(
+                                template._id,
+                                template.activeVersion ??
+                                  template.versions.find((v) => v.status === 'draft')
+                                    ?.version,
+                              )
+                            }
+                          >
+                            <Map className="mr-2 h-3.5 w-3.5" />
+                            Template mapping
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, Loader2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Loader2, Map } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { NoticeTemplate, NoticeTemplateVersion } from '@/types';
 import { CodeEditorPane } from './CodeEditorPane';
@@ -94,6 +94,11 @@ export function NoticeTemplateEditor({
     isAdmin && clientId
       ? `/notice-generator/config?clientId=${clientId}&configId=${template.linkedConfigId ?? ''}`
       : `/notice-generator/config?configId=${template.linkedConfigId ?? ''}`;
+
+  const mappingPageUrl =
+    isAdmin && clientId
+      ? `/notice-generator/templates/${template._id}/mapping?clientId=${clientId}&version=${selectedVersion.version}`
+      : `/notice-generator/templates/${template._id}/mapping?version=${selectedVersion.version}`;
 
   const linkedConfigFile =
     linkedConfig?.configFileName ??
@@ -407,6 +412,13 @@ export function NoticeTemplateEditor({
         </div>
 
         <div className="flex items-center gap-2 text-xs">
+          <Link
+            to={mappingPageUrl}
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1.5 text-muted-foreground hover:text-foreground"
+          >
+            <Map className="h-3 w-3" />
+            Template mapping
+          </Link>
           {template.linkedConfigId && linkedConfig ? (
             <Link
               to={configPageUrl}

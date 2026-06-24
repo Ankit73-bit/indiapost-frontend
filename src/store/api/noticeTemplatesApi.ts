@@ -106,6 +106,58 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
       transformResponse: (res: ApiSuccess<VariableValidationResult>) => res.data,
     }),
 
+    getNoticeVersionTemplateMap: build.query<
+      { mappings: Record<string, string>; typFiles: string[]; readOnly: boolean },
+      { templateId: string; version: string }
+    >({
+      query: ({ templateId, version }) =>
+        `/api/v1/notice-templates/${templateId}/versions/${version}/template-map`,
+      transformResponse: (
+        res: ApiSuccess<{
+          mappings: Record<string, string>;
+          typFiles: string[];
+          readOnly: boolean;
+        }>,
+      ) => res.data,
+      providesTags: (_r, _e, { templateId }) => [
+        { type: 'NoticeTemplate', id: templateId },
+      ],
+    }),
+
+    updateNoticeVersionTemplateMap: build.mutation<
+      NoticeTemplate,
+      { templateId: string; version: string; mappings: Record<string, string> }
+    >({
+      query: ({ templateId, version, mappings }) => ({
+        url: `/api/v1/notice-templates/${templateId}/versions/${version}/template-map`,
+        method: 'PUT',
+        body: { mappings },
+      }),
+      transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
+      invalidatesTags: (_r, _e, { templateId }) => [
+        { type: 'NoticeTemplate', id: templateId },
+      ],
+    }),
+
+    importNoticeVersionTemplateMap: build.mutation<
+      NoticeTemplate,
+      { templateId: string; version: string; file: File }
+    >({
+      query: ({ templateId, version, file }) => {
+        const form = new FormData();
+        form.append('file', file);
+        return {
+          url: `/api/v1/notice-templates/${templateId}/versions/${version}/template-map/import`,
+          method: 'POST',
+          body: form,
+        };
+      },
+      transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
+      invalidatesTags: (_r, _e, { templateId }) => [
+        { type: 'NoticeTemplate', id: templateId },
+      ],
+    }),
+
     uploadNoticeVersionFiles: build.mutation<
       NoticeTemplate,
       { templateId: string; version: string; files: File[] }
@@ -193,6 +245,9 @@ export const {
   useUpdateNoticeVersionConfigMutation,
   useUpdateNoticeVersionLayoutMutation,
   useGetNoticeVersionValidationQuery,
+  useGetNoticeVersionTemplateMapQuery,
+  useUpdateNoticeVersionTemplateMapMutation,
+  useImportNoticeVersionTemplateMapMutation,
   useUploadNoticeVersionFilesMutation,
   useLazyGetNoticeVersionFileQuery,
   useUpdateNoticeVersionFileMutation,
@@ -222,6 +277,27 @@ export async function fetchNoticeVersionFile(
     contentType: string;
   }>;
   return json.data;
+}
+
+export async function downloadNoticeVersionTemplateMap(
+  templateId: string,
+  version: string,
+): Promise<{ blob: Blob; fileName: string }> {
+  const { getApiBaseUrl } = await import('@/lib/apiBase');
+  const { credFetch } = await import('@/lib/fetchCredentials');
+  const res = await credFetch(
+    `${getApiBaseUrl()}/api/v1/notice-templates/${templateId}/versions/${version}/template-map/export`,
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? 'Export failed');
+  }
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const fileNameMatch = /filename="([^"]+)"/.exec(disposition);
+  return {
+    blob: await res.blob(),
+    fileName: fileNameMatch?.[1] ?? 'template.json',
+  };
 }
 
 export async function fetchNoticeBatchPdf(

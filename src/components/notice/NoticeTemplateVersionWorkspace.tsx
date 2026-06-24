@@ -55,7 +55,6 @@ export function NoticeTemplateVersionWorkspace({
       'v1',
   );
   const [typFiles, setTypFiles] = useState<File[]>([]);
-  const [templateJsonFile, setTemplateJsonFile] = useState<File | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [configForm, setConfigForm] = useState<NoticeConfigFormValues | null>(null);
   const [configErrors, setConfigErrors] = useState<
@@ -427,30 +426,9 @@ export function NoticeTemplateVersionWorkspace({
                         files={typFiles}
                         onFilesChange={setTypFiles}
                       />
-                      <div>
-                        <p className="mb-1 text-sm font-medium">
-                          template.json{' '}
-                          <span className="font-normal text-muted-foreground">(optional)</span>
-                        </p>
-                        <p className="mb-3 text-xs text-muted-foreground">
-                          State / language → filename mapping used at generation time.
-                        </p>
-                        <FileDropZone
-                          accept=".json"
-                          acceptLabel="template.json"
-                          files={templateJsonFile ? [templateJsonFile] : []}
-                          onFilesChange={(f) => setTemplateJsonFile(f[0] ?? null)}
-                          multiple={false}
-                        />
-                      </div>
                       <Button
-                        disabled={uploading || (!typFiles.length && !templateJsonFile)}
-                        onClick={() =>
-                          void handleUpload([
-                            ...typFiles,
-                            ...(templateJsonFile ? [templateJsonFile] : []),
-                          ])
-                        }
+                        disabled={uploading || !typFiles.length}
+                        onClick={() => void handleUpload(typFiles)}
                       >
                         {uploading && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
                         Upload files

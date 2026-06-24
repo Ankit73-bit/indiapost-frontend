@@ -56,7 +56,6 @@ export function CreateNoticeTemplateFlow({
   const [noticeId, setNoticeId] = useState('');
   const [noticeIdTouched, setNoticeIdTouched] = useState(false);
   const [typFiles, setTypFiles] = useState<File[]>([]);
-  const [templateJsonFile, setTemplateJsonFile] = useState<File | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -112,11 +111,7 @@ export function CreateNoticeTemplateFlow({
       }).unwrap();
 
       const version = template.versions[0]?.version ?? 'v1';
-      const allFiles = [
-        ...typFiles,
-        ...(templateJsonFile ? [templateJsonFile] : []),
-        ...imageFiles,
-      ];
+      const allFiles = [...typFiles, ...imageFiles];
 
       if (allFiles.length > 0) {
         await uploadFiles({
@@ -126,12 +121,12 @@ export function CreateNoticeTemplateFlow({
         }).unwrap();
       }
 
-      toast.success('Template created — link a config from Notice Generator → Config');
-      const editorUrl =
+      toast.success('Template created — configure mapping and link a config next');
+      const mappingUrl =
         isAdmin && clientId
-          ? `/notice-generator/templates/${template._id}/editor?clientId=${clientId}`
-          : `/notice-generator/templates/${template._id}/editor`;
-      navigate(editorUrl);
+          ? `/notice-generator/templates/${template._id}/mapping?clientId=${clientId}`
+          : `/notice-generator/templates/${template._id}/mapping`;
+      navigate(mappingUrl);
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Failed to create template'));
     } finally {
@@ -179,10 +174,9 @@ export function CreateNoticeTemplateFlow({
             <div>
               <h2 className="text-lg font-medium">Typst templates</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Upload one or more <code className="text-xs">.typ</code> files. Map Excel
-                columns in{' '}
-                <span className="font-medium">Notice Generator → Config</span> after creating
-                the template.
+                Upload one or more <code className="text-xs">.typ</code> files. After
+                creation you will set state/language → file mappings on the Template
+                Mapping page.
               </p>
             </div>
             <FileDropZone
@@ -192,24 +186,6 @@ export function CreateNoticeTemplateFlow({
               onFilesChange={setTypFiles}
               emptyHint="Add default.typ plus language variants (hindi.typ, marathi.typ, …)."
             />
-            <div className="border-t border-border pt-6">
-              <h3 className="text-sm font-medium">
-                template.json{' '}
-                <span className="font-normal text-muted-foreground">(optional)</span>
-              </h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                State / language mapping for multi-template notices.
-              </p>
-              <div className="mt-3">
-                <FileDropZone
-                  accept=".json"
-                  acceptLabel="template.json"
-                  files={templateJsonFile ? [templateJsonFile] : []}
-                  onFilesChange={(f) => setTemplateJsonFile(f[0] ?? null)}
-                  multiple={false}
-                />
-              </div>
-            </div>
           </div>
         )}
 
@@ -238,12 +214,10 @@ export function CreateNoticeTemplateFlow({
                   <span className="font-mono text-xs">({derivedNoticeId})</span>
                 </p>
                 <p>
-                  {typFiles.length} template(s)
-                  {templateJsonFile ? ' + template.json' : ''} · {imageFiles.length}{' '}
-                  image(s)
+                  {typFiles.length} template(s) · {imageFiles.length} image(s)
                 </p>
                 <p className="text-xs">
-                  Link a config from the Config tab before generating sample PDFs.
+                  Next: configure template mapping, then link a config from the Config tab.
                 </p>
               </CardContent>
             </Card>
