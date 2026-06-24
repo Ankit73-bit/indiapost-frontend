@@ -60,8 +60,8 @@ export function NoticeTemplatesListPage() {
   function openTemplate(id: string) {
     const url =
       isAdmin && clientId
-        ? `/notice-generator/templates/${id}?clientId=${clientId}`
-        : `/notice-generator/templates/${id}`;
+        ? `/notice-generator/templates/${id}/editor?clientId=${clientId}`
+        : `/notice-generator/templates/${id}/editor`;
     navigate(url);
   }
 
@@ -195,7 +195,7 @@ export function NoticeTemplatesListPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => openTemplate(template._id)}>
-                            View versions
+                            Open editor
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

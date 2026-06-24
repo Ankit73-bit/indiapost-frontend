@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 interface FileDropZoneProps {
   accept: string;
   acceptLabel: string;
-  files: File[];
+  files?: File[];
   onFilesChange: (files: File[]) => void;
   multiple?: boolean;
   icon?: 'file' | 'image';
@@ -16,7 +16,7 @@ interface FileDropZoneProps {
 export function FileDropZone({
   accept,
   acceptLabel,
-  files,
+  files = [],
   onFilesChange,
   multiple = true,
   icon = 'file',

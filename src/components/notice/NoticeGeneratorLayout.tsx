@@ -15,13 +15,15 @@ export function NoticeGeneratorLayout() {
     useNoticeClientContext();
 
   const isDetailOrCreate =
-    /\/templates\/(new|[a-f0-9]{24})/i.test(location.pathname);
+    /\/templates\/(new|[a-f0-9]{24})(\/editor)?/i.test(location.pathname);
 
   const showClientPicker = isAdmin && !isDetailOrCreate;
 
+  const isEditor = /\/editor$/i.test(location.pathname);
+
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col">
-      {(showClientPicker || (selectedClient && isDetailOrCreate)) && (
+    <div className={isEditor ? 'flex h-full min-h-0 w-full flex-1 flex-col' : 'flex min-h-0 w-full flex-1 flex-col'}>
+      {!isEditor && (showClientPicker || (selectedClient && isDetailOrCreate)) && (
         <div className="mb-4 flex items-center justify-end gap-3">
           {showClientPicker && (
             <div className="flex items-center gap-2">

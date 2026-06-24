@@ -564,6 +564,7 @@ export interface NoticeVersionMetadata {
   variableValidation?: VariableValidationResult;
   description?: string;
   createdBy?: string;
+  configFileName?: string;
 }
 
 export interface NoticeTemplateVersion {
@@ -584,9 +585,37 @@ export interface NoticeTemplate {
   noticeId: string;
   noticeName: string;
   activeVersion?: string;
+  linkedConfigId?: string;
   versions: NoticeTemplateVersion[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface NoticeConfigRecord {
+  _id: string;
+  clientId: string;
+  name: string;
+  noticeId: string;
+  config: NoticeConfig;
+  configFileName: string;
+  linkedTemplateId?: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ListNoticeConfigsQuery {
+  clientId: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface CreateNoticeConfigBody {
+  clientId: string;
+  config: NoticeConfig;
+  configFileName?: string;
+  description?: string;
+  linkedTemplateId?: string;
 }
 
 export interface ListNoticeTemplatesQuery {
@@ -597,6 +626,9 @@ export interface ListNoticeTemplatesQuery {
 
 export interface CreateNoticeTemplateBody {
   clientId: string;
-  noticeConfig: NoticeConfig;
+  noticeConfig?: NoticeConfig;
+  configId?: string;
+  noticeName?: string;
+  noticeId?: string;
   description?: string;
 }

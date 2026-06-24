@@ -1,10 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronRight,
-  Download,
-  FileJson,
   Image as ImageIcon,
   Loader2,
   FileType2,
@@ -13,57 +11,50 @@ import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { FileDropZone } from '@/components/notice/FileDropZone';
 import { NoticeStepIndicator } from '@/components/notice/NoticeStepIndicator';
-import { NoticeConfigForm } from '@/components/notice/NoticeConfigForm';
-import {
-  downloadSampleConfigFile,
-  emptyNoticeConfigForm,
-  formValuesToNoticeConfig,
-  parseUploadedConfigFile,
-  readJsonFile,
-  validateNoticeConfigForm,
-} from '@/lib/noticeConfig';
 import {
   useCreateNoticeTemplateMutation,
   useUploadNoticeVersionFilesMutation,
 } from '@/store/api/noticeTemplatesApi';
 import { toast } from '@/lib/toast';
 import { getApiErrorMessage } from '@/lib/helpers';
-import type { Client, NoticeConfig } from '@/types';
 
 const STEPS = [
-  { id: 'config', label: 'Configuration', icon: FileJson },
   { id: 'templates', label: 'Templates', icon: FileType2 },
   { id: 'images', label: 'Images', icon: ImageIcon },
 ] as const;
 
 type StepId = (typeof STEPS)[number]['id'];
 
+function slugifyNoticeId(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 64);
+}
+
 interface CreateNoticeTemplateFlowProps {
   clientId: string;
-  onClientIdChange?: (id: string) => void;
-  clients?: Client[];
   isAdmin?: boolean;
 }
 
 export function CreateNoticeTemplateFlow({
   clientId,
-  onClientIdChange,
-  clients,
   isAdmin,
 }: CreateNoticeTemplateFlowProps) {
   const navigate = useNavigate();
-  const [step, setStep] = useState<StepId>('config');
-  const [configMode, setConfigMode] = useState<'upload' | 'manual' | null>(null);
-  const [formValues, setFormValues] = useState(emptyNoticeConfigForm);
-  const [uploadedConfigName, setUploadedConfigName] = useState<string | null>(null);
-  const [parsedTables, setParsedTables] = useState<NoticeConfig['tables']>();
-  const [formErrors, setFormErrors] = useState<Partial<Record<string, string>>>({});
+  const [step, setStep] = useState<StepId>('templates');
+  const [noticeName, setNoticeName] = useState('');
+  const [noticeId, setNoticeId] = useState('');
+  const [noticeIdTouched, setNoticeIdTouched] = useState(false);
   const [typFiles, setTypFiles] = useState<File[]>([]);
   const [templateJsonFile, setTemplateJsonFile] = useState<File | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -77,71 +68,47 @@ export function CreateNoticeTemplateFlow({
       ? `/notice-generator/templates?clientId=${clientId}`
       : '/notice-generator/templates';
 
-  async function handleConfigUpload(files: FileList | File[]) {
-    const file = files[0];
-    if (!file) return;
-    try {
-      const raw = await readJsonFile(file);
-      const { form, tables } = parseUploadedConfigFile(raw);
-      setFormValues(form);
-      setParsedTables(tables);
-      setUploadedConfigName(file.name);
-      setConfigMode('upload');
-
-      const slug = raw.client_slug;
-      if (isAdmin && onClientIdChange && typeof slug === 'string' && clients) {
-        const match = clients.find(
-          (c) => c.slug.toLowerCase() === slug.toLowerCase(),
-        );
-        if (match) onClientIdChange(match._id);
-      }
-
-      toast.success('Config loaded — review the fields below');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Invalid config file');
-    }
-  }
+  const derivedNoticeId = useMemo(() => {
+    if (noticeIdTouched && noticeId.trim()) return noticeId.trim();
+    return slugifyNoticeId(noticeName) || '';
+  }, [noticeId, noticeIdTouched, noticeName]);
 
   function goNext() {
-    if (step === 'config') {
-      const errors = validateNoticeConfigForm(formValues, clientId);
-      if (Object.keys(errors).length) {
-        setFormErrors(errors);
-        return;
-      }
-      setFormErrors({});
-      setStep('templates');
+    if (!noticeName.trim()) {
+      toast.error('Enter a template name');
       return;
     }
-    if (step === 'templates') {
-      if (!typFiles.some((f) => f.name.toLowerCase().endsWith('.typ'))) {
-        toast.error('Upload at least one .typ template file');
-        return;
-      }
-      setStep('images');
+    if (!derivedNoticeId) {
+      toast.error('Enter a notice ID');
+      return;
     }
-  }
-
-  function goBack() {
-    if (step === 'templates') setStep('config');
-    if (step === 'images') setStep('templates');
+    if (!typFiles.some((f) => f.name.toLowerCase().endsWith('.typ'))) {
+      toast.error('Upload at least one .typ template file');
+      return;
+    }
+    setStep('images');
   }
 
   async function handleSubmit() {
-    const errors = validateNoticeConfigForm(formValues, clientId);
-    if (Object.keys(errors).length) {
-      setFormErrors(errors);
-      setStep('config');
+    const name = noticeName.trim();
+    const id = derivedNoticeId;
+    if (!name || !id) {
+      toast.error('Template name and notice ID are required');
+      setStep('templates');
+      return;
+    }
+    if (!typFiles.some((f) => f.name.toLowerCase().endsWith('.typ'))) {
+      toast.error('Upload at least one .typ template file');
+      setStep('templates');
       return;
     }
 
     setSubmitting(true);
     try {
-      const noticeConfig = formValuesToNoticeConfig(formValues, parsedTables);
       const template = await createTemplate({
         clientId,
-        noticeConfig,
-        description: formValues.description || undefined,
+        noticeName: name,
+        noticeId: id,
       }).unwrap();
 
       const version = template.versions[0]?.version ?? 'v1';
@@ -159,12 +126,12 @@ export function CreateNoticeTemplateFlow({
         }).unwrap();
       }
 
-      toast.success('Notice template created');
-      const detailUrl =
+      toast.success('Template created — link a config from Notice Generator → Config');
+      const editorUrl =
         isAdmin && clientId
-          ? `/notice-generator/templates/${template._id}?clientId=${clientId}`
-          : `/notice-generator/templates/${template._id}`;
-      navigate(detailUrl);
+          ? `/notice-generator/templates/${template._id}/editor?clientId=${clientId}`
+          : `/notice-generator/templates/${template._id}/editor`;
+      navigate(editorUrl);
     } catch (err) {
       toast.error(getApiErrorMessage(err, 'Failed to create template'));
     } finally {
@@ -179,89 +146,43 @@ export function CreateNoticeTemplateFlow({
       <NoticeStepIndicator steps={[...STEPS]} currentIndex={stepIndex} />
 
       <div className="min-h-[420px]">
-        {step === 'config' && (
-          <div className="space-y-5">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Start with a config file</CardTitle>
-                <CardDescription>
-                  Download the sample JSON with required and optional fields, fill it
-                  in, and upload — or build the mapping in the form.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3 sm:flex-row">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={downloadSampleConfigFile}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download sample config
-                </Button>
-                <Button
-                  type="button"
-                  variant={configMode === 'upload' ? 'default' : 'secondary'}
-                  className="flex-1"
-                  onClick={() => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = '.json,application/json';
-                    input.onchange = () => {
-                      if (input.files) void handleConfigUpload(input.files);
-                    };
-                    input.click();
-                  }}
-                >
-                  <FileJson className="mr-2 h-4 w-4" />
-                  Upload config JSON
-                </Button>
-              </CardContent>
-            </Card>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-border" />
+        {step === 'templates' && (
+          <div className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="notice-name">Template name</Label>
+                <Input
+                  id="notice-name"
+                  value={noticeName}
+                  onChange={(e) => setNoticeName(e.target.value)}
+                  placeholder="e.g. BHFL Assignment Notice"
+                />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  {configMode === 'upload' ? 'Review uploaded config' : 'Or create manually'}
-                </span>
+              <div className="space-y-2">
+                <Label htmlFor="notice-id">Notice ID</Label>
+                <Input
+                  id="notice-id"
+                  value={noticeIdTouched ? noticeId : derivedNoticeId}
+                  onChange={(e) => {
+                    setNoticeIdTouched(true);
+                    setNoticeId(e.target.value);
+                  }}
+                  placeholder="e.g. bhfl_assignment"
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used for storage paths. Auto-generated from the name until you edit it.
+                </p>
               </div>
             </div>
 
-            {!configMode && (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => setConfigMode('manual')}
-              >
-                Fill in the mapping form
-              </Button>
-            )}
-
-            {(configMode === 'upload' || configMode === 'manual') && (
-              <NoticeConfigForm
-                values={formValues}
-                onChange={setFormValues}
-                clients={clients}
-                clientId={clientId}
-                onClientIdChange={onClientIdChange}
-                isAdmin={isAdmin}
-                uploadedFileName={uploadedConfigName}
-                errors={formErrors}
-              />
-            )}
-          </div>
-        )}
-
-        {step === 'templates' && (
-          <div className="space-y-6">
             <div>
               <h2 className="text-lg font-medium">Typst templates</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Upload one or more <code className="text-xs">.typ</code> files.
+                Upload one or more <code className="text-xs">.typ</code> files. Map Excel
+                columns in{' '}
+                <span className="font-medium">Notice Generator → Config</span> after creating
+                the template.
               </p>
             </div>
             <FileDropZone
@@ -313,19 +234,16 @@ export function CreateNoticeTemplateFlow({
               </CardHeader>
               <CardContent className="space-y-1 text-sm text-muted-foreground">
                 <p>
-                  <span className="font-medium text-foreground">
-                    {formValues.notice_name || '—'}
-                  </span>{' '}
-                  ({formValues.notice_id || '—'})
-                </p>
-                <p>
-                  Header: {formValues.with_header ? 'Yes' : 'No'} · ID:{' '}
-                  <code className="text-xs">{formValues.id_field}</code>
+                  <span className="font-medium text-foreground">{noticeName}</span>{' '}
+                  <span className="font-mono text-xs">({derivedNoticeId})</span>
                 </p>
                 <p>
                   {typFiles.length} template(s)
                   {templateJsonFile ? ' + template.json' : ''} · {imageFiles.length}{' '}
                   image(s)
+                </p>
+                <p className="text-xs">
+                  Link a config from the Config tab before generating sample PDFs.
                 </p>
               </CardContent>
             </Card>
@@ -338,34 +256,21 @@ export function CreateNoticeTemplateFlow({
           type="button"
           variant="ghost"
           onClick={() =>
-            step === 'config' ? navigate(listUrl) : goBack()
+            step === 'templates' ? navigate(listUrl) : setStep('templates')
           }
           disabled={submitting}
         >
-          {step === 'config' ? (
-            <>
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Back to templates
-            </>
-          ) : (
-            <>
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Back
-            </>
-          )}
+          <ChevronLeft className="mr-1 h-4 w-4" />
+          {step === 'templates' ? 'Back to templates' : 'Back'}
         </Button>
 
         {step !== 'images' ? (
-          <Button
-            type="button"
-            onClick={goNext}
-            disabled={step === 'config' && !configMode}
-          >
+          <Button type="button" onClick={goNext}>
             Next
             <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         ) : (
-          <Button type="button" onClick={handleSubmit} disabled={submitting}>
+          <Button type="button" onClick={() => void handleSubmit()} disabled={submitting}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Create template
           </Button>

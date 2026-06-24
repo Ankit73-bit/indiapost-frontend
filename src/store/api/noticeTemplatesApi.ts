@@ -69,12 +69,12 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
 
     updateNoticeVersionConfig: build.mutation<
       NoticeTemplate,
-      { templateId: string; version: string; noticeConfig: NoticeConfig }
+      { templateId: string; version: string; noticeConfig: NoticeConfig; configFileName?: string }
     >({
-      query: ({ templateId, version, noticeConfig }) => ({
+      query: ({ templateId, version, noticeConfig, configFileName }) => ({
         url: `/api/v1/notice-templates/${templateId}/versions/${version}/config`,
         method: 'PATCH',
-        body: { noticeConfig },
+        body: { noticeConfig, configFileName },
       }),
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
       invalidatesTags: (_r, _e, { templateId }) => [
@@ -106,15 +106,6 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
       transformResponse: (res: ApiSuccess<VariableValidationResult>) => res.data,
     }),
 
-    getNoticeSampleRow: build.query<
-      Record<string, string>,
-      { templateId: string; version: string }
-    >({
-      query: ({ templateId, version }) =>
-        `/api/v1/notice-templates/${templateId}/versions/${version}/sample-row`,
-      transformResponse: (res: ApiSuccess<Record<string, string>>) => res.data,
-    }),
-
     uploadNoticeVersionFiles: build.mutation<
       NoticeTemplate,
       { templateId: string; version: string; files: File[] }
@@ -136,12 +127,53 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
       ],
     }),
 
+    getNoticeVersionFile: build.query<
+      { fileName: string; content: string; contentType: string },
+      { templateId: string; version: string; fileName: string }
+    >({
+      query: ({ templateId, version, fileName }) =>
+        `/api/v1/notice-templates/${templateId}/versions/${version}/files/${encodeURIComponent(fileName)}`,
+      transformResponse: (
+        res: ApiSuccess<{ fileName: string; content: string; contentType: string }>,
+      ) => res.data,
+    }),
+
+    updateNoticeVersionFile: build.mutation<
+      NoticeTemplate,
+      { templateId: string; version: string; fileName: string; content: string }
+    >({
+      query: ({ templateId, version, fileName, content }) => ({
+        url: `/api/v1/notice-templates/${templateId}/versions/${version}/files/${encodeURIComponent(fileName)}`,
+        method: 'PUT',
+        body: { content },
+      }),
+      transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
+      invalidatesTags: (_r, _e, { templateId }) => [
+        { type: 'NoticeTemplate', id: templateId },
+      ],
+    }),
+
     activateNoticeVersion: build.mutation<
       NoticeTemplate,
       { templateId: string; version: string }
     >({
       query: ({ templateId, version }) => ({
         url: `/api/v1/notice-templates/${templateId}/versions/${version}/activate`,
+        method: 'POST',
+      }),
+      transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
+      invalidatesTags: (_r, _e, { templateId }) => [
+        { type: 'NoticeTemplate', id: templateId },
+        { type: 'NoticeTemplate', id: 'LIST' },
+      ],
+    }),
+
+    deactivateNoticeVersion: build.mutation<
+      NoticeTemplate,
+      { templateId: string; version: string }
+    >({
+      query: ({ templateId, version }) => ({
+        url: `/api/v1/notice-templates/${templateId}/versions/${version}/deactivate`,
         method: 'POST',
       }),
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
@@ -161,71 +193,101 @@ export const {
   useUpdateNoticeVersionConfigMutation,
   useUpdateNoticeVersionLayoutMutation,
   useGetNoticeVersionValidationQuery,
-  useGetNoticeSampleRowQuery,
-  useLazyGetNoticeSampleRowQuery,
   useUploadNoticeVersionFilesMutation,
+  useLazyGetNoticeVersionFileQuery,
+  useUpdateNoticeVersionFileMutation,
   useActivateNoticeVersionMutation,
+  useDeactivateNoticeVersionMutation,
 } = noticeTemplatesApi;
 
-export async function fetchNoticeTestPdf(
+export const DEFAULT_CONFIG_FILE_NAME = 'sample.json';
+
+export async function fetchNoticeVersionFile(
   templateId: string,
   version: string,
-  options?: {
-    row?: Record<string, string | number | boolean>;
-    generateSample?: boolean;
-  },
-): Promise<Blob> {
+  fileName: string,
+): Promise<{ fileName: string; content: string; contentType: string }> {
   const { getApiBaseUrl } = await import('@/lib/apiBase');
   const { credFetch } = await import('@/lib/fetchCredentials');
   const res = await credFetch(
-    `${getApiBaseUrl()}/api/v1/notice-templates/${templateId}/versions/${version}/test-pdf`,
+    `${getApiBaseUrl()}/api/v1/notice-templates/${templateId}/versions/${version}/files/${encodeURIComponent(fileName)}`,
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? 'Failed to load file');
+  }
+  const json = (await res.json()) as ApiSuccess<{
+    fileName: string;
+    content: string;
+    contentType: string;
+  }>;
+  return json.data;
+}
+
+export async function fetchNoticeBatchPdf(
+  templateId: string,
+  version: string,
+  excelFile: File,
+  sheetIndex = 0,
+): Promise<{ blob: Blob; fileName: string; rowCount: number; pdfCount: number }> {
+  const { getApiBaseUrl } = await import('@/lib/apiBase');
+  const { credFetch } = await import('@/lib/fetchCredentials');
+
+  const form = new FormData();
+  form.append('file', excelFile);
+  if (sheetIndex !== 0) form.append('sheetIndex', String(sheetIndex));
+
+  const res = await credFetch(
+    `${getApiBaseUrl()}/api/v1/notice-templates/${templateId}/versions/${version}/batch-pdf`,
+    { method: 'POST', body: form },
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { error?: string }).error ?? 'Batch generation failed');
+  }
+
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const fileNameMatch = /filename="([^"]+)"/.exec(disposition);
+  return {
+    blob: await res.blob(),
+    fileName: fileNameMatch?.[1] ?? 'notices.zip',
+    rowCount: Number(res.headers.get('X-Row-Count') ?? 0),
+    pdfCount: Number(res.headers.get('X-Pdf-Count') ?? 0),
+  };
+}
+
+export async function fetchNoticeTemplatePreviewPdf(
+  templateId: string,
+  version: string,
+  options?: {
+    fileName?: string;
+    typOverrides?: Record<string, string>;
+  },
+): Promise<{ blob: Blob; fileName: string }> {
+  const { getApiBaseUrl } = await import('@/lib/apiBase');
+  const { credFetch } = await import('@/lib/fetchCredentials');
+  const res = await credFetch(
+    `${getApiBaseUrl()}/api/v1/notice-templates/${templateId}/versions/${version}/preview-pdf`,
     {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        row: options?.row,
-        generateSample: options?.generateSample,
+        fileName: options?.fileName,
+        typOverrides: options?.typOverrides,
       }),
     },
   );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(
-      (err as { error?: string }).error ?? 'Failed to generate test PDF',
+      (err as { error?: string }).error ?? 'Failed to generate preview',
     );
   }
-  return res.blob();
-}
-
-export async function fetchNoticeTestPdfFromSpreadsheet(
-  templateId: string,
-  version: string,
-  file: File,
-  rowIndex = 0,
-): Promise<{ blob: Blob; rowJson?: string }> {
-  const { getApiBaseUrl } = await import('@/lib/apiBase');
-  const { credFetch } = await import('@/lib/fetchCredentials');
-  const form = new FormData();
-  form.append('file', file);
-  form.append('rowIndex', String(rowIndex));
-
-  const res = await credFetch(
-    `${getApiBaseUrl()}/api/v1/notice-templates/${templateId}/versions/${version}/test-pdf/upload`,
-    {
-      method: 'POST',
-      body: form,
-    },
-  );
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(
-      (err as { error?: string }).error ?? 'Failed to generate test PDF from file',
-    );
-  }
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const fileNameMatch = /filename="([^"]+)"/.exec(disposition);
   return {
     blob: await res.blob(),
-    rowJson: res.headers.get('X-Test-Row-Json') ?? undefined,
+    fileName: fileNameMatch?.[1] ?? 'preview.pdf',
   };
 }

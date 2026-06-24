@@ -9,7 +9,7 @@ import { ZipDownloadProvider } from '@/components/lists/ZipDownloadProvider';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useAppSelector } from '@/store';
-import { isFullWidthAppRoute } from '@/lib/appLayout';
+import { isFullWidthAppRoute, isImmersiveEditorRoute } from '@/lib/appLayout';
 
 export function AppShell() {
   const user = useAppSelector((s) => s.auth.user);
@@ -23,15 +23,18 @@ export function AppShell() {
   if (!user) return <Navigate to="/login" replace />;
 
   const isFullWidth = isFullWidthAppRoute(location.pathname);
+  const isImmersive = isImmersiveEditorRoute(location.pathname);
 
   return (
     <ZipDownloadProvider>
       <TooltipProvider delayDuration={300}>
       <div className="flex h-full min-h-0 overflow-hidden bg-background">
-        <Sidebar />
+        {!isImmersive && <Sidebar />}
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <MobileAppHeader onOpenNav={() => setMobileNavOpen(true)} />
+          {!isImmersive && (
+            <MobileAppHeader onOpenNav={() => setMobileNavOpen(true)} />
+          )}
 
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
             <SheetContent
@@ -42,14 +45,22 @@ export function AppShell() {
             </SheetContent>
           </Sheet>
 
-          <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-            <OperationsBanner />
-            <ZipDownloadBanner />
+          <main
+            className={
+              isImmersive
+                ? 'min-h-0 flex-1 overflow-hidden'
+                : 'min-h-0 flex-1 overflow-y-auto overflow-x-hidden'
+            }
+          >
+            {!isImmersive && <OperationsBanner />}
+            {!isImmersive && <ZipDownloadBanner />}
             <div
               className={
-                isFullWidth
-                  ? 'w-full px-4 py-4 sm:px-6'
-                  : 'mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6'
+                isImmersive
+                  ? 'h-full w-full'
+                  : isFullWidth
+                    ? 'w-full px-4 py-4 sm:px-6'
+                    : 'mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6'
               }
             >
               <Outlet />

@@ -7,3 +7,8 @@ export function isFullWidthAppRoute(pathname: string): boolean {
     pathname.startsWith('/sync')
   );
 }
+
+/** Immersive editor routes — no page padding, fixed viewport height. */
+export function isImmersiveEditorRoute(pathname: string): boolean {
+  return /\/notice-generator\/templates\/[^/]+\/editor/.test(pathname);
+}

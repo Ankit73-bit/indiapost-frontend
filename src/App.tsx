@@ -17,6 +17,7 @@ import { NoticeGeneratorLayout } from '@/components/notice/NoticeGeneratorLayout
 import { NoticeTemplatesListPage } from '@/pages/notice/NoticeTemplatesListPage';
 import { NoticeTemplateCreatePage } from '@/pages/notice/NoticeTemplateCreatePage';
 import { NoticeTemplateDetailPage } from '@/pages/notice/NoticeTemplateDetailPage';
+import { NoticeTemplateEditorPage } from '@/pages/notice/NoticeTemplateEditorPage';
 import { NoticeConfigPage } from '@/pages/notice/NoticeConfigPage';
 import { NoticeExcelPage } from '@/pages/notice/NoticeExcelPage';
 
@@ -70,6 +71,7 @@ export default function App() {
               <Route index element={<Navigate to="templates" replace />} />
               <Route path="templates" element={<NoticeTemplatesListPage />} />
               <Route path="templates/new" element={<NoticeTemplateCreatePage />} />
+              <Route path="templates/:templateId/editor" element={<NoticeTemplateEditorPage />} />
               <Route path="templates/:templateId" element={<NoticeTemplateDetailPage />} />
               <Route path="config" element={<NoticeConfigPage />} />
               <Route path="excel" element={<NoticeExcelPage />} />

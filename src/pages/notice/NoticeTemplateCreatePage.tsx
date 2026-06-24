@@ -4,8 +4,7 @@ import { CreateNoticeTemplateFlow } from '@/components/notice/CreateNoticeTempla
 import { useNoticeClientContext } from '@/hooks/useNoticeClientContext';
 
 export function NoticeTemplateCreatePage() {
-  const { clientId, setClientId, isAdmin, activeClients } =
-    useNoticeClientContext();
+  const { clientId, isAdmin } = useNoticeClientContext();
 
   const listUrl =
     isAdmin && clientId
@@ -25,17 +24,12 @@ export function NoticeTemplateCreatePage() {
       <div>
         <h2 className="text-lg font-semibold">Create template</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Step 1: configuration · Step 2: .typ files · Step 3: images
+          Step 1: .typ files · Step 2: images. Link Excel mapping in Config after creation.
         </p>
       </div>
 
       {clientId ? (
-        <CreateNoticeTemplateFlow
-          clientId={clientId}
-          onClientIdChange={isAdmin ? setClientId : undefined}
-          clients={activeClients}
-          isAdmin={isAdmin}
-        />
+        <CreateNoticeTemplateFlow clientId={clientId} isAdmin={isAdmin} />
       ) : (
         <p className="text-sm text-muted-foreground">
           Select a client before creating a template.
