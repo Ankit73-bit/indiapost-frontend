@@ -18,6 +18,7 @@ export function useNoticeExcelPage(clientId: string) {
   const [individualPdfCount, setIndividualPdfCount] = useState(0);
   const [mergedPdfCount, setMergedPdfCount] = useState(0);
   const [mergePdfs, setMergePdfs] = useState(true);
+  const [includeIndividualPdfs, setIncludeIndividualPdfs] = useState(true);
 
   useEffect(() => {
     return () => {
@@ -48,6 +49,7 @@ export function useNoticeExcelPage(clientId: string) {
     try {
       const result = await fetchBatchNoticePdf(templateId, templateVersion, excelFile, {
         mergePdfs,
+        individualPdfs: includeIndividualPdfs,
       });
       const url = URL.createObjectURL(result.blob);
       setBlobUrl(url);
@@ -63,7 +65,9 @@ export function useNoticeExcelPage(clientId: string) {
     }
   }
 
-  const canGenerate = Boolean(templateId && excelFile && clientId);
+  const canGenerate = Boolean(
+    templateId && excelFile && clientId && (mergePdfs || includeIndividualPdfs),
+  );
 
   return {
     templateId,
@@ -81,6 +85,8 @@ export function useNoticeExcelPage(clientId: string) {
     mergedPdfCount,
     mergePdfs,
     setMergePdfs,
+    includeIndividualPdfs,
+    setIncludeIndividualPdfs,
     handleTemplateChange,
     reset,
     handleGenerate,

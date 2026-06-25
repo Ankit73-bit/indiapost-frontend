@@ -12,7 +12,9 @@ interface NoticeExcelSelectFormProps {
   excelFile: File | null;
   canGenerate: boolean;
   mergePdfs: boolean;
+  includeIndividualPdfs: boolean;
   onMergePdfsChange: (value: boolean) => void;
+  onIncludeIndividualPdfsChange: (value: boolean) => void;
   onTemplateChange: (templateId: string, version: string, name: string) => void;
   onExcelFile: (file: File) => void;
   onExcelClear: () => void;
@@ -28,7 +30,9 @@ export function NoticeExcelSelectForm({
   excelFile,
   canGenerate,
   mergePdfs,
+  includeIndividualPdfs,
   onMergePdfsChange,
+  onIncludeIndividualPdfsChange,
   onTemplateChange,
   onExcelFile,
   onExcelClear,
@@ -100,6 +104,20 @@ export function NoticeExcelSelectForm({
             </div>
           </div>
         )}
+        <label className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={includeIndividualPdfs}
+            onChange={(event) => onIncludeIndividualPdfsChange(event.target.checked)}
+          />
+          <span>
+            <span className="font-medium">Include individual PDFs</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Keeps row-level PDFs in the ZIP (selected by default).
+            </span>
+          </span>
+        </label>
         <label className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 px-4 py-3 text-sm">
           <input
             type="checkbox"

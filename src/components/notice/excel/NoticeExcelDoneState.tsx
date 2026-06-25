@@ -7,6 +7,7 @@ interface NoticeExcelDoneStateProps {
   individualPdfCount: number;
   mergedPdfCount: number;
   mergePdfs: boolean;
+  includeIndividualPdfs: boolean;
   blobUrl: string | null;
   zipFileName: string;
   onReset: () => void;
@@ -18,13 +19,19 @@ export function NoticeExcelDoneState({
   individualPdfCount,
   mergedPdfCount,
   mergePdfs,
+  includeIndividualPdfs,
   blobUrl,
   zipFileName,
   onReset,
 }: NoticeExcelDoneStateProps) {
-  const summary = mergePdfs
-    ? `${mergedPdfCount} merged PDF${mergedPdfCount !== 1 ? 's' : ''} from ${individualPdfCount} individual notice${individualPdfCount !== 1 ? 's' : ''} (${rowCount} row${rowCount !== 1 ? 's' : ''})`
-    : `${pdfCount} PDF${pdfCount !== 1 ? 's' : ''} generated from ${rowCount} row${rowCount !== 1 ? 's' : ''}`;
+  const individualLabel = `${individualPdfCount} individual PDF${individualPdfCount !== 1 ? 's' : ''}`;
+  const mergedLabel = `${mergedPdfCount} merged PDF${mergedPdfCount !== 1 ? 's' : ''}`;
+  const packagedLabel = `${pdfCount} file${pdfCount !== 1 ? 's' : ''} in ZIP`;
+  const summary = mergePdfs && includeIndividualPdfs
+    ? `${mergedLabel} and ${individualLabel} generated from ${rowCount} row${rowCount !== 1 ? 's' : ''} (${packagedLabel})`
+    : mergePdfs
+      ? `${mergedLabel} generated from ${rowCount} row${rowCount !== 1 ? 's' : ''} (${packagedLabel})`
+      : `${individualLabel} generated from ${rowCount} row${rowCount !== 1 ? 's' : ''} (${packagedLabel})`;
 
   return (
     <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-6 py-8 text-center">

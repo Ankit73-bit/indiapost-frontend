@@ -25,6 +25,7 @@ export function NoticeExcelPage() {
           individualPdfCount={excel.individualPdfCount}
           mergedPdfCount={excel.mergedPdfCount}
           mergePdfs={excel.mergePdfs}
+          includeIndividualPdfs={excel.includeIndividualPdfs}
           blobUrl={excel.blobUrl}
           zipFileName={excel.zipFileName}
           onReset={excel.reset}
@@ -46,6 +47,8 @@ export function NoticeExcelPage() {
           canGenerate={excel.canGenerate}
           mergePdfs={excel.mergePdfs}
           onMergePdfsChange={excel.setMergePdfs}
+          includeIndividualPdfs={excel.includeIndividualPdfs}
+          onIncludeIndividualPdfsChange={excel.setIncludeIndividualPdfs}
           onTemplateChange={excel.handleTemplateChange}
           onExcelFile={excel.setExcelFile}
           onExcelClear={() => excel.setExcelFile(null)}

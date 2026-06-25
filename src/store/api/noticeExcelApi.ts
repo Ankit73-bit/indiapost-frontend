@@ -4,6 +4,7 @@ import { credFetch } from '@/lib/fetchCredentials';
 export interface BatchPdfOptions {
   sheetIndex?: number;
   mergePdfs?: boolean;
+  individualPdfs?: boolean;
   mergeBatchSize?: number;
 }
 
@@ -32,6 +33,9 @@ export async function fetchBatchNoticePdf(
     if (options.mergeBatchSize != null) {
       form.append('mergeBatchSize', String(options.mergeBatchSize));
     }
+  }
+  if (options.individualPdfs === false) {
+    form.append('individualPdfs', 'false');
   }
 
   const res = await credFetch(
