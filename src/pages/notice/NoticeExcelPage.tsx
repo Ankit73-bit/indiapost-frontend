@@ -22,6 +22,9 @@ export function NoticeExcelPage() {
         <NoticeExcelDoneState
           pdfCount={excel.pdfCount}
           rowCount={excel.rowCount}
+          individualPdfCount={excel.individualPdfCount}
+          mergedPdfCount={excel.mergedPdfCount}
+          mergePdfs={excel.mergePdfs}
           blobUrl={excel.blobUrl}
           zipFileName={excel.zipFileName}
           onReset={excel.reset}
@@ -41,6 +44,8 @@ export function NoticeExcelPage() {
           templateName={excel.templateName}
           excelFile={excel.excelFile}
           canGenerate={excel.canGenerate}
+          mergePdfs={excel.mergePdfs}
+          onMergePdfsChange={excel.setMergePdfs}
           onTemplateChange={excel.handleTemplateChange}
           onExcelFile={excel.setExcelFile}
           onExcelClear={() => excel.setExcelFile(null)}

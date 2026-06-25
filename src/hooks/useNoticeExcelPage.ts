@@ -15,6 +15,9 @@ export function useNoticeExcelPage(clientId: string) {
   const [zipFileName, setZipFileName] = useState('batch.zip');
   const [rowCount, setRowCount] = useState(0);
   const [pdfCount, setPdfCount] = useState(0);
+  const [individualPdfCount, setIndividualPdfCount] = useState(0);
+  const [mergedPdfCount, setMergedPdfCount] = useState(0);
+  const [mergePdfs, setMergePdfs] = useState(true);
 
   useEffect(() => {
     return () => {
@@ -43,12 +46,16 @@ export function useNoticeExcelPage(clientId: string) {
     setErrorMsg('');
 
     try {
-      const result = await fetchBatchNoticePdf(templateId, templateVersion, excelFile);
+      const result = await fetchBatchNoticePdf(templateId, templateVersion, excelFile, {
+        mergePdfs,
+      });
       const url = URL.createObjectURL(result.blob);
       setBlobUrl(url);
       setZipFileName(result.fileName);
       setRowCount(result.rowCount);
       setPdfCount(result.pdfCount);
+      setIndividualPdfCount(result.individualPdfCount);
+      setMergedPdfCount(result.mergedPdfCount);
       setPageState('done');
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : 'Batch generation failed');
@@ -70,6 +77,10 @@ export function useNoticeExcelPage(clientId: string) {
     zipFileName,
     rowCount,
     pdfCount,
+    individualPdfCount,
+    mergedPdfCount,
+    mergePdfs,
+    setMergePdfs,
     handleTemplateChange,
     reset,
     handleGenerate,

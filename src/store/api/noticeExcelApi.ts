@@ -1,23 +1,37 @@
 import { getApiBaseUrl } from '@/lib/apiBase';
 import { credFetch } from '@/lib/fetchCredentials';
 
+export interface BatchPdfOptions {
+  sheetIndex?: number;
+  mergePdfs?: boolean;
+  mergeBatchSize?: number;
+}
+
 export interface BatchPdfResult {
   blob: Blob;
   fileName: string;
   rowCount: number;
   pdfCount: number;
+  individualPdfCount: number;
+  mergedPdfCount: number;
 }
 
 export async function fetchBatchNoticePdf(
   templateId: string,
   version: string,
   excelFile: File,
-  sheetIndex = 0,
+  options: BatchPdfOptions = {},
 ): Promise<BatchPdfResult> {
   const form = new FormData();
   form.append('file', excelFile);
-  if (sheetIndex > 0) {
-    form.append('sheetIndex', String(sheetIndex));
+  if ((options.sheetIndex ?? 0) > 0) {
+    form.append('sheetIndex', String(options.sheetIndex));
+  }
+  if (options.mergePdfs) {
+    form.append('mergePdfs', 'true');
+    if (options.mergeBatchSize != null) {
+      form.append('mergeBatchSize', String(options.mergeBatchSize));
+    }
   }
 
   const res = await credFetch(
@@ -33,6 +47,8 @@ export async function fetchBatchNoticePdf(
 
   const rowCount = Number(res.headers.get('X-Row-Count') ?? '0');
   const pdfCount = Number(res.headers.get('X-Pdf-Count') ?? '0');
+  const individualPdfCount = Number(res.headers.get('X-Individual-Pdf-Count') ?? String(pdfCount));
+  const mergedPdfCount = Number(res.headers.get('X-Merged-Pdf-Count') ?? '0');
 
   // Derive filename from Content-Disposition or fall back to a safe default
   const disposition = res.headers.get('Content-Disposition') ?? '';
@@ -40,5 +56,5 @@ export async function fetchBatchNoticePdf(
   const fileName = match?.[1] ?? `batch-${templateId}-${version}.zip`;
 
   const blob = await res.blob();
-  return { blob, fileName, rowCount, pdfCount };
+  return { blob, fileName, rowCount, pdfCount, individualPdfCount, mergedPdfCount };
 }
