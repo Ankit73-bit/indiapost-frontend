@@ -1,20 +1,15 @@
 import { Link } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import { CreateNoticeTemplateFlow } from '@/components/notice/CreateNoticeTemplateFlow';
-import { useNoticeClientContext } from '@/hooks/useNoticeClientContext';
+import { useNoticeTemplateCreatePage } from './useNoticeTemplateCreatePage';
 
 export function NoticeTemplateCreatePage() {
-  const { clientId, isAdmin } = useNoticeClientContext();
-
-  const listUrl =
-    isAdmin && clientId
-      ? `/notice-generator/templates?clientId=${clientId}`
-      : '/notice-generator/templates';
+  const page = useNoticeTemplateCreatePage();
 
   return (
     <div className="space-y-6">
       <Link
-        to={listUrl}
+        to={page.listUrl}
         className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="mr-1 h-4 w-4" />
@@ -28,8 +23,8 @@ export function NoticeTemplateCreatePage() {
         </p>
       </div>
 
-      {clientId ? (
-        <CreateNoticeTemplateFlow clientId={clientId} isAdmin={isAdmin} />
+      {page.clientId ? (
+        <CreateNoticeTemplateFlow clientId={page.clientId} isAdmin={page.isAdmin} />
       ) : (
         <p className="text-sm text-muted-foreground">
           Select a client before creating a template.

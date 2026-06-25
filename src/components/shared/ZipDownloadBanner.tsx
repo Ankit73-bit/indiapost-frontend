@@ -1,6 +1,6 @@
 import { Loader2 } from 'lucide-react';
 import { ZipDownloadProgress } from '@/components/lists/ZipDownloadProgress';
-import { useZipDownload } from '@/components/lists/ZipDownloadProvider';
+import { useZipDownload } from '@/components/lists/useZipDownload';
 import { isFullWidthAppRoute } from '@/lib/appLayout';
 import { cn } from '@/lib/utils';
 import { useLocation } from 'react-router-dom';

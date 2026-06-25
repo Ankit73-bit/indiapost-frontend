@@ -1,62 +1,29 @@
-import { Link, useParams } from 'react-router-dom';
-import { ChevronLeft, Loader2 } from 'lucide-react';
 import { NoticeTemplateVersionWorkspace } from '@/components/notice/NoticeTemplateVersionWorkspace';
-import { useNoticeClientContext } from '@/hooks/useNoticeClientContext';
-import {
-  useGetNoticeTemplateQuery,
-} from '@/store/api/noticeTemplatesApi';
+import { NoticeTemplateDetailPageHeader } from './NoticeTemplateDetailPageHeader';
+import { NoticeTemplatePageLoading } from './NoticeTemplatePageLoading';
+import { NoticeTemplatePageNotFound } from './NoticeTemplatePageNotFound';
+import { useNoticeTemplateDetailPage } from './useNoticeTemplateDetailPage';
 
 export function NoticeTemplateDetailPage() {
-  const { templateId = '' } = useParams();
-  const { isAdmin, clientId } = useNoticeClientContext();
+  const page = useNoticeTemplateDetailPage();
 
-  const { data: template, isLoading, isError, refetch } = useGetNoticeTemplateQuery(
-    templateId,
-    { skip: !templateId },
-  );
-
-  const listUrl =
-    isAdmin && clientId
-      ? `/notice-generator/templates?clientId=${clientId}`
-      : '/notice-generator/templates';
-
-  if (isLoading) {
+  if (page.isLoading) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+      <NoticeTemplatePageLoading className="flex justify-center py-20" />
     );
   }
 
-  if (isError || !template) {
-    return (
-      <div className="space-y-4 py-10 text-center">
-        <p className="text-muted-foreground">Template not found.</p>
-        <Link to={listUrl} className="text-sm text-primary hover:underline">
-          Back to templates
-        </Link>
-      </div>
-    );
+  if (page.isError || !page.template) {
+    return <NoticeTemplatePageNotFound listUrl={page.listUrl} />;
   }
 
   return (
     <div className="space-y-6">
-      <Link
-        to={listUrl}
-        className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ChevronLeft className="mr-1 h-4 w-4" />
-        All templates
-      </Link>
-
-      <div>
-        <p className="font-mono text-xs text-muted-foreground">{template.noticeId}</p>
-        <h2 className="text-xl font-semibold">{template.noticeName}</h2>
-      </div>
+      <NoticeTemplateDetailPageHeader listUrl={page.listUrl} template={page.template} />
 
       <NoticeTemplateVersionWorkspace
-        template={template}
-        onUpdated={() => void refetch()}
+        template={page.template}
+        onUpdated={() => void page.refetch()}
       />
     </div>
   );

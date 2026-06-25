@@ -1,54 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'sonner';
+import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from '@/store';
-import { ThemeProvider, useTheme } from '@/components/theme/ThemeProvider';
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { SessionProvider } from '@/components/auth/SessionProvider';
-import { AppShell } from '@/components/layout/AppShell';
-import { LoginPage }     from '@/pages/LoginPage';
-import { DashboardPage } from '@/pages/DashboardPage';
-import { ClientsPage }   from '@/pages/ClientsPage';
-import { ListsPage }     from '@/pages/ListsPage';
-import { ArticlesPage }  from '@/pages/ArticlesPage';
-import { SyncPage }      from '@/pages/SyncPage';
-import { UsersPage }     from '@/pages/UsersPage';
-import { ProfilePage }   from '@/pages/ProfilePage';
-import { NoticeGeneratorLayout } from '@/components/notice/NoticeGeneratorLayout';
-import { NoticeTemplatesListPage } from '@/pages/notice/NoticeTemplatesListPage';
-import { NoticeTemplateCreatePage } from '@/pages/notice/NoticeTemplateCreatePage';
-import { NoticeTemplateDetailPage } from '@/pages/notice/NoticeTemplateDetailPage';
-import { NoticeTemplateEditorPage } from '@/pages/notice/NoticeTemplateEditorPage';
-import { NoticeConfigPage } from '@/pages/notice/NoticeConfigPage';
-import { NoticeExcelPage } from '@/pages/notice/NoticeExcelPage';
-import { NoticeTemplateMappingRoutePage } from '@/pages/notice/NoticeTemplateMappingRoutePage';
-
-// Admin-only guard
-function AdminRoute({ children }: { children: React.ReactNode }) {
-  const user = store.getState().auth.user;
-  if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'admin') return <Navigate to="/" replace />;
-  return <>{children}</>;
-}
-
-// Admin-only guard (redirects customers away from sync)
-function SyncRoute({ children }: { children: React.ReactNode }) {
-  const user = store.getState().auth.user;
-  if (!user) return <Navigate to="/login" replace />;
-  if (user.role !== 'admin') return <Navigate to="/" replace />;
-  return <>{children}</>;
-}
-
-function ThemedToaster() {
-  const { resolvedTheme } = useTheme();
-  return (
-    <Toaster
-      position="top-right"
-      richColors
-      closeButton
-      theme={resolvedTheme}
-    />
-  );
-}
+import { AppRoutes } from '@/app/AppRoutes';
+import { ThemedToaster } from '@/app/ThemedToaster';
 
 export default function App() {
   return (
@@ -56,38 +12,9 @@ export default function App() {
       <ThemeProvider>
         <ThemedToaster />
         <BrowserRouter>
-        <SessionProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-
-          {/* All authenticated routes live inside AppShell */}
-          <Route element={<AppShell />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="lists"    element={<ListsPage />} />
-            <Route path="articles" element={<ArticlesPage />} />
-            <Route path="profile"  element={<ProfilePage />} />
-            <Route path="sync"     element={<SyncRoute><SyncPage /></SyncRoute>} />
-
-            <Route path="notice-generator" element={<NoticeGeneratorLayout />}>
-              <Route index element={<Navigate to="templates" replace />} />
-              <Route path="templates" element={<NoticeTemplatesListPage />} />
-              <Route path="templates/new" element={<NoticeTemplateCreatePage />} />
-              <Route path="templates/:templateId/editor" element={<NoticeTemplateEditorPage />} />
-              <Route path="templates/:templateId/mapping" element={<NoticeTemplateMappingRoutePage />} />
-              <Route path="templates/:templateId" element={<NoticeTemplateDetailPage />} />
-              <Route path="config" element={<NoticeConfigPage />} />
-              <Route path="excel" element={<NoticeExcelPage />} />
-            </Route>
-
-            {/* Admin-only */}
-            <Route path="clients" element={<AdminRoute><ClientsPage /></AdminRoute>} />
-            <Route path="users"   element={<AdminRoute><UsersPage /></AdminRoute>} />
-          </Route>
-
-          {/* Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        </SessionProvider>
+          <SessionProvider>
+            <AppRoutes />
+          </SessionProvider>
         </BrowserRouter>
       </ThemeProvider>
     </Provider>

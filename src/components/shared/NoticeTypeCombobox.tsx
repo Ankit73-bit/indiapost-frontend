@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { HelpTooltip } from '@/components/shared/HelpTooltip';
@@ -9,20 +8,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mergeNoticeTypes } from '@/lib/listNaming';
-
-const CUSTOM_OPTION = '__custom_notice_type__';
-
-interface NoticeTypeComboboxProps {
-  value: string;
-  onChange: (value: string) => void;
-  knownTypes?: string[];
-  /** When true, only shows types used by the selected client (no global presets). */
-  clientScoped?: boolean;
-  error?: string;
-  required?: boolean;
-  disabled?: boolean;
-}
+import { CUSTOM_NOTICE_TYPE_OPTION } from '@/components/shared/noticeTypeCombobox.constants';
+import type { NoticeTypeComboboxProps } from '@/components/shared/noticeTypeCombobox.types';
+import { useNoticeTypeCombobox } from '@/components/shared/useNoticeTypeCombobox';
 
 export function NoticeTypeCombobox({
   value,
@@ -33,31 +21,13 @@ export function NoticeTypeCombobox({
   required = true,
   disabled = false,
 }: NoticeTypeComboboxProps) {
-  const options = useMemo(() => {
-    if (clientScoped) {
-      return [...new Set(knownTypes.map((t) => t.trim().toUpperCase()).filter(Boolean))].sort();
-    }
-    return mergeNoticeTypes(knownTypes);
-  }, [knownTypes, clientScoped]);
-  const normalizedValue = value.trim().toUpperCase();
-  const valueInOptions = normalizedValue
-    ? options.includes(normalizedValue)
-    : false;
-  const [customMode, setCustomMode] = useState(false);
-
-  useEffect(() => {
-    if (!normalizedValue) {
-      setCustomMode(false);
-      return;
-    }
-    setCustomMode(!valueInOptions);
-  }, [normalizedValue, valueInOptions]);
-
-  const selectValue = customMode
-    ? CUSTOM_OPTION
-    : value && valueInOptions
-      ? value.toUpperCase()
-      : undefined;
+  const {
+    options,
+    customMode,
+    selectValue,
+    handleSelectChange,
+    helpContent,
+  } = useNoticeTypeCombobox({ value, onChange, knownTypes, clientScoped });
 
   return (
     <div className="space-y-1.5">
@@ -65,28 +35,12 @@ export function NoticeTypeCombobox({
         <Label>
           Notice Type {required && <span className="text-destructive">*</span>}
         </Label>
-        <HelpTooltip
-          content={
-            clientScoped
-              ? options.length > 0
-                ? 'Types previously used for this client, or add a new custom type.'
-                : 'No notice types yet for this client — add a custom type below.'
-              : 'Pick a preset or add a custom type — new types appear in filters after save.'
-          }
-        />
+        <HelpTooltip content={helpContent} />
       </div>
       <Select
         value={selectValue}
         disabled={disabled}
-        onValueChange={(v) => {
-          if (v === CUSTOM_OPTION) {
-            setCustomMode(true);
-            if (valueInOptions) onChange('');
-            return;
-          }
-          setCustomMode(false);
-          onChange(v);
-        }}
+        onValueChange={handleSelectChange}
       >
         <SelectTrigger>
           <SelectValue placeholder="Select notice type" />
@@ -97,7 +51,7 @@ export function NoticeTypeCombobox({
               {t}
             </SelectItem>
           ))}
-          <SelectItem value={CUSTOM_OPTION}>+ Add custom type…</SelectItem>
+          <SelectItem value={CUSTOM_NOTICE_TYPE_OPTION}>+ Add custom type…</SelectItem>
         </SelectContent>
       </Select>
 

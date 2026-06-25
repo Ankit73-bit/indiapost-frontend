@@ -1,16 +1,8 @@
 import { useState } from 'react';
-import { Filter, X } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
+import { FilterSheetContent } from '@/components/shared/FilterSheetContent';
 import { cn } from '@/lib/utils';
-import { isSearchableSelectMenuTarget } from '@/lib/searchableSelect';
 
 interface FilterSheetButtonProps {
   title?: string;
@@ -51,68 +43,18 @@ export function FilterSheetButton({
         )}
       </Button>
 
-      <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent
-          side="right"
-          className="w-full sm:max-w-md overflow-y-auto"
-          onInteractOutside={(e) => {
-            if (isSearchableSelectMenuTarget(e.target)) {
-              e.preventDefault();
-            }
-          }}
-          onPointerDownOutside={(e) => {
-            if (isSearchableSelectMenuTarget(e.target)) {
-              e.preventDefault();
-            }
-          }}
-        >
-          <SheetHeader>
-            <SheetTitle>{title}</SheetTitle>
-            {description && <SheetDescription>{description}</SheetDescription>}
-          </SheetHeader>
-
-          <div className="flex flex-col gap-4 px-4 pb-4">{children}</div>
-
-          <SheetFooter className="flex-row gap-2 sm:justify-between">
-            {onClear && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={clearDisabled}
-                onClick={() => {
-                  onClear();
-                  setOpen(false);
-                }}
-              >
-                <X className="mr-1 h-3.5 w-3.5" />
-                Clear all
-              </Button>
-            )}
-            <Button type="button" size="sm" onClick={() => setOpen(false)}>
-              Apply
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+      <FilterSheetContent
+        open={open}
+        onOpenChange={setOpen}
+        title={title}
+        description={description}
+        onClear={onClear}
+        clearDisabled={clearDisabled}
+      >
+        {children}
+      </FilterSheetContent>
     </>
   );
 }
 
-interface FilterFieldProps {
-  label: React.ReactNode;
-  hint?: React.ReactNode;
-  children: React.ReactNode;
-}
-
-export function FilterField({ label, hint, children }: FilterFieldProps) {
-  return (
-    <div className="relative space-y-1.5 overflow-visible">
-      <div className="flex items-center gap-1.5">
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
-        {hint}
-      </div>
-      {children}
-    </div>
-  );
-}
+export { FilterField } from '@/components/shared/FilterField';

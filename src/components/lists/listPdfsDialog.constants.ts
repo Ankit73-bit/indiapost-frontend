@@ -1,0 +1,2 @@
+export const LIST_PDFS_PAGE_SIZE = 50;
+export const LIST_PDFS_LARGE_LIST_THRESHOLD = 1000;

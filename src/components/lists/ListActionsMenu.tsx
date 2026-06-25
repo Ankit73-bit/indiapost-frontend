@@ -1,60 +1,20 @@
-import { useRef } from 'react';
-import {
-  MoreHorizontal,
-  Upload,
-  Download,
-  FileText,
-  RefreshCw,
-  Pencil,
-  Trash2,
-  XCircle,
-  Loader2,
-} from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { List } from '@/types';
+import { ListActionsMenuContent } from '@/components/lists/ListActionsMenuContent';
+import {
+  useListActionsMenu,
+  type ListActionsMenuProps,
+} from '@/components/lists/useListActionsMenu';
 
-export interface ListActionsMenuProps {
-  list: List;
-  isAdmin: boolean;
-  uploading: boolean;
-  exporting: boolean;
-  triggeringSync: boolean;
-  onUpload: (file: File) => void;
-  onExport: () => void;
-  onOpenPdfs: () => void;
-  onTriggerSync: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  onCancelImport: () => void;
-  onCancelSync: () => void;
-}
+export type { ListActionsMenuProps } from '@/components/lists/listActionsMenu.types';
 
-export function ListActionsMenu({
-  list,
-  isAdmin,
-  uploading,
-  exporting,
-  triggeringSync,
-  onUpload,
-  onExport,
-  onOpenPdfs,
-  onTriggerSync,
-  onEdit,
-  onDelete,
-  onCancelImport,
-  onCancelSync,
-}: ListActionsMenuProps) {
-  const isBusy = list.status === 'IMPORTING' || list.status === 'SYNCING';
-  const canSync = isAdmin && !isBusy && list.totalArticles > 0;
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
+export function ListActionsMenu(props: ListActionsMenuProps) {
+  const { list, isAdmin, uploading, onUpload } = props;
+  const { isBusy, canSync, fileInputRef } = useListActionsMenu(list, isAdmin);
 
   return (
     <DropdownMenu>
@@ -81,92 +41,12 @@ export function ListActionsMenu({
           <span className="sr-only">List actions</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem
-          className="gap-2"
-          disabled={isBusy || uploading}
-          onSelect={(e) => {
-            e.preventDefault();
-            fileInputRef.current?.click();
-          }}
-        >
-          {uploading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Upload className="h-3.5 w-3.5" />
-          )}
-          Upload file
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          className="gap-2"
-          disabled={exporting || list.totalArticles === 0}
-          onClick={onExport}
-        >
-          {exporting ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Download className="h-3.5 w-3.5" />
-          )}
-          Export Excel
-        </DropdownMenuItem>
-
-        <DropdownMenuItem className="gap-2" onClick={onOpenPdfs}>
-          <FileText className="h-3.5 w-3.5" />
-          Tracking PDFs
-        </DropdownMenuItem>
-
-        {canSync && (
-          <DropdownMenuItem
-            className="gap-2"
-            disabled={triggeringSync}
-            onClick={onTriggerSync}
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Sync
-          </DropdownMenuItem>
-        )}
-
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem className="gap-2" onClick={onEdit}>
-          <Pencil className="h-3.5 w-3.5" />
-          Edit list
-        </DropdownMenuItem>
-
-        {isAdmin && list.status === 'IMPORTING' && (
-          <DropdownMenuItem
-            className="gap-2 text-destructive focus:text-destructive"
-            onClick={onCancelImport}
-          >
-            <XCircle className="h-3.5 w-3.5" />
-            Cancel import
-          </DropdownMenuItem>
-        )}
-
-        {isAdmin && list.status === 'SYNCING' && (
-          <DropdownMenuItem
-            className="gap-2 text-destructive focus:text-destructive"
-            onClick={onCancelSync}
-          >
-            <XCircle className="h-3.5 w-3.5" />
-            Reset sync
-          </DropdownMenuItem>
-        )}
-
-        {isAdmin && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="gap-2 text-destructive focus:text-destructive"
-              onClick={onDelete}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
+      <ListActionsMenuContent
+        {...props}
+        fileInputRef={fileInputRef}
+        isBusy={isBusy}
+        canSync={canSync}
+      />
     </DropdownMenu>
   );
 }
