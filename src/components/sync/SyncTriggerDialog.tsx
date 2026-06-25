@@ -12,6 +12,7 @@ import { SearchableClientSelect } from '@/components/shared/SearchableClientSele
 import { HelpTooltip } from '@/components/shared/HelpTooltip';
 import { isSearchableSelectMenuTarget } from '@/lib/searchableSelect';
 import { SYNC_ALL_LISTS } from '@/pages/sync/syncPage.constants';
+import type { Client } from '@/types';
 import type { useListClientsQuery } from '@/store/api/clientsApi';
 
 interface SyncTriggerDialogProps {
@@ -70,7 +71,7 @@ export function SyncTriggerDialog({
               Client
             </label>
             <SearchableClientSelect
-              clients={clientsData?.data.filter((c) => c.isActive) ?? []}
+              clients={clientsData?.data.filter((c: Client) => c.isActive) ?? []}
               value={selectedClientId || undefined}
               onChange={(id) => onClientChange(id ?? '')}
               showAllOption={false}

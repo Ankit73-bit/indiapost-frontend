@@ -5,7 +5,6 @@ import {
   type FetchArgs,
   type FetchBaseQueryError,
 } from '@reduxjs/toolkit/query/react';
-import type { RootState } from '../index';
 import { getApiBaseUrl } from '@/lib/apiBase';
 import { clearCredentials, setUser } from '../authSlice';
 import type { ApiSuccess, PublicUser } from '@/types';

@@ -1,6 +1,6 @@
 import { Loader2 } from 'lucide-react';
 import { ListPdfsDialogArticleRow } from '@/components/lists/ListPdfsDialogArticleRow';
-import type { PaginationMeta, PdfArticleItem } from '@/types';
+import type { PdfArticleItem } from '@/types';
 
 interface ListPdfsDialogArticlesTableBodyProps {
   articles: PdfArticleItem[];

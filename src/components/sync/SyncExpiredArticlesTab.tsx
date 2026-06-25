@@ -3,6 +3,7 @@ import { TableShell } from '@/components/shared/TableShell';
 import { Pagination } from '@/components/shared/Pagination';
 import { HelpTooltip } from '@/components/shared/HelpTooltip';
 import { formatDate } from '@/lib/helpers';
+import type { TrackingExpiredArticle } from '@/types';
 import type { useListTrackingExpiredArticlesQuery } from '@/store/api/syncApi';
 
 interface SyncExpiredArticlesTabProps {
@@ -69,7 +70,7 @@ export function SyncExpiredArticlesTab({
                 </td>
               </tr>
             )}
-            {expiredData?.data.map((row) => (
+            {expiredData?.data.map((row: TrackingExpiredArticle) => (
               <tr
                 key={row._id}
                 className="border-b border-border/50 last:border-0"

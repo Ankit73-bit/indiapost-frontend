@@ -25,13 +25,12 @@ export function ArticleStatusBreakdownCard({
       <h2 className="mb-3 text-sm font-semibold">Article Status Breakdown</h2>
       <div className="space-y-2">
         {Object.entries(statsData.byStatus)
-          .sort(([, a], [, b]) => (b ?? 0) - (a ?? 0))
+          .sort(([, a], [, b]) => Number(b ?? 0) - Number(a ?? 0))
           .map(([status, count]) => {
+            const rowCount = Number(count ?? 0);
             const pct =
               statsData.totalArticles > 0
-                ? Math.round(
-                    ((count ?? 0) / statsData.totalArticles) * 100,
-                  )
+                ? Math.round((rowCount / statsData.totalArticles) * 100)
                 : 0;
             return (
               <div key={status} className="flex items-center gap-3">

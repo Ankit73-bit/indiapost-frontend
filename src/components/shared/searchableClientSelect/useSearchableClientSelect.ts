@@ -4,7 +4,6 @@ import {
   CLIENT_SELECT_MIN_WIDTH,
 } from './searchableClientSelect.constants';
 import type {
-  ClientOption,
   SearchableClientSelectProps,
 } from './searchableClientSelect.types';
 

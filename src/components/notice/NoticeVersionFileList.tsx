@@ -1,5 +1,3 @@
-import type { NoticeTemplateVersion } from '@/types';
-
 interface NoticeVersionFileListProps {
   title: string;
   files: string[];

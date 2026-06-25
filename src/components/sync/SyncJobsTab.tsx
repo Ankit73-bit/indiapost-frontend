@@ -4,7 +4,7 @@ import { SyncJobStatusBadge } from '@/components/shared/StatusBadge';
 import { Pagination } from '@/components/shared/Pagination';
 import { formatRelative } from '@/lib/helpers';
 import { isActiveSyncJob, syncJobPercent } from '@/lib/syncJobUtils';
-import type { SyncJob } from '@/types';
+import type { Client, SyncJob } from '@/types';
 import type { useListClientsQuery } from '@/store/api/clientsApi';
 import type { useListSyncJobsQuery } from '@/store/api/syncApi';
 
@@ -87,7 +87,7 @@ export function SyncJobsTab({
                 {job._id.slice(-8)}
               </td>
               <td className="px-4 py-3 text-muted-foreground text-xs">
-                {clientsData?.data.find((c) => c._id === job.clientId)?.name ??
+                {clientsData?.data.find((c: Client) => c._id === job.clientId)?.name ??
                   job.clientId.slice(-6)}
               </td>
               <td className="px-4 py-3 text-muted-foreground">

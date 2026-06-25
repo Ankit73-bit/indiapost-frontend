@@ -3,7 +3,6 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { COLUMN_FORMATS } from '@/lib/noticeConfig';
-import { NoticeConfigField } from '@/components/notice/NoticeConfigField';
 import { parseColumnFormat } from '@/components/notice/noticeTablesListEditors.utils';
 import type { NoticeConfigFormValues } from '@/lib/noticeConfig';
 

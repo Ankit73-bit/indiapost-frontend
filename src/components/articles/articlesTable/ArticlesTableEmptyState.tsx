@@ -12,7 +12,7 @@ interface ArticlesTableEmptyStateProps {
   syncFailedOnly: boolean;
   clientId: string;
   listId: string;
-  listMeta?: List;
+  listMeta?: List | null;
   onClearFilters: () => void;
 }
 

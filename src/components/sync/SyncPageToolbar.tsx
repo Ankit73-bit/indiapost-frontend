@@ -22,6 +22,7 @@ import {
   SYNC_JOB_STATUSES,
   SYNC_JOB_TYPES,
 } from '@/pages/sync/syncPage.constants';
+import type { Client } from '@/types';
 import type { useListClientsQuery } from '@/store/api/clientsApi';
 
 interface SyncPageToolbarProps {
@@ -76,7 +77,7 @@ export function SyncPageToolbar({
             }
           >
             <SearchableClientSelect
-              clients={clientsData?.data.filter((c) => c.isActive) ?? []}
+              clients={clientsData?.data.filter((c: Client) => c.isActive) ?? []}
               value={filterClientId || undefined}
               className="w-full"
               portaled={false}

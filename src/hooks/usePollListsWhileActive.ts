@@ -7,6 +7,7 @@ type ListListsOptions = Parameters<typeof useListListsQuery>[1];
 type PollListsOptions = Omit<ListListsOptions, 'pollingInterval'> & {
   /** Keep polling even before IMPORTING/SYNCING appears in cache (e.g. right after upload). */
   forcePoll?: boolean;
+  skip?: boolean;
 };
 
 /** Poll list queries every 3s while any list is importing/syncing or forcePoll is set. */

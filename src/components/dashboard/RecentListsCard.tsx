@@ -1,5 +1,6 @@
 import { RecentListsCardRow } from '@/components/dashboard/RecentListsCardRow';
 import type { useListListsQuery } from '@/store/api/listsApi';
+import type { List } from '@/types';
 
 interface RecentListsCardProps {
   recentListsData: NonNullable<ReturnType<typeof useListListsQuery>['data']>;
@@ -49,7 +50,7 @@ export function RecentListsCard({
             </tr>
           </thead>
           <tbody>
-            {recentListsData.data.map((list) => (
+            {recentListsData.data.map((list: List) => (
               <RecentListsCardRow
                 key={list._id}
                 list={list}

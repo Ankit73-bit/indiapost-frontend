@@ -1,7 +1,6 @@
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DialogFooter } from '@/components/ui/dialog';
-import type { ListFormValues } from '@/pages/lists/listsPage.types';
 import type { List } from '@/types';
 
 interface ListFormDialogFooterProps {

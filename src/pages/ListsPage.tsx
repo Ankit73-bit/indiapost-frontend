@@ -86,7 +86,7 @@ export function ListsPage() {
         isAdmin={lists.isAdmin}
         activeClients={lists.activeClients}
         customerClient={lists.customerClient}
-        authClientId={lists.authUser?.clientId}
+        authClientId={lists.authUser?.clientId ?? undefined}
         watchedClientId={lists.watchedClientId}
         watchedNoticeType={lists.watchedNoticeType}
         formClientId={lists.formClientId}
@@ -126,14 +126,16 @@ export function ListsPage() {
         isAdmin={lists.isAdmin}
         activeClients={lists.activeClients}
         defaultClientId={
-          lists.isAdmin ? lists.clientIdFilter : lists.authUser?.clientId
+          lists.isAdmin
+            ? lists.clientIdFilter
+            : (lists.authUser?.clientId ?? undefined)
         }
         noticeTypeOptions={lists.noticeTypeOptions}
         yearOptions={lists.yearOptions}
         currentFilters={{
           clientId:
             lists.clientIdFilter ??
-            (lists.isAdmin ? undefined : lists.authUser?.clientId),
+            (lists.isAdmin ? undefined : (lists.authUser?.clientId ?? undefined)),
           year: lists.showAllYears ? undefined : Number(lists.filterYear),
           month: lists.filterMonth ? Number(lists.filterMonth) : undefined,
           noticeType: lists.filterNoticeType || undefined,

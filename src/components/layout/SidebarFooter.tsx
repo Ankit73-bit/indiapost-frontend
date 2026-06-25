@@ -1,9 +1,8 @@
 import { LogOut, UserCircle } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
-import type { PublicUser } from '@/types';
 
 interface SidebarFooterProps {
-  user: PublicUser | null;
+  user: { name?: string; email: string; role?: string } | null;
   onProfile: () => void;
   onLogout: () => void;
 }

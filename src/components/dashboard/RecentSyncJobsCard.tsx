@@ -1,6 +1,7 @@
 import { SyncJobStatusBadge } from '@/components/shared/StatusBadge';
 import { formatRelative } from '@/lib/helpers';
 import type { useListSyncJobsQuery } from '@/store/api/syncApi';
+import type { SyncJob } from '@/types';
 
 interface RecentSyncJobsCardProps {
   recentJobs: ReturnType<typeof useListSyncJobsQuery>['data'];
@@ -26,7 +27,7 @@ export function RecentSyncJobsCard({
         <p className="text-sm text-muted-foreground">No sync jobs yet.</p>
       )}
       <div className="space-y-2">
-        {recentJobs?.data.map((job) => (
+        {recentJobs?.data.map((job: SyncJob) => (
           <div
             key={job._id}
             className="flex items-center justify-between gap-3 text-sm"
