@@ -57,6 +57,13 @@ export function useNoticeConfigEditor({
     useUnlinkNoticeConfigTemplateMutation();
 
   useEffect(() => {
+    if (isNew) {
+      setFormValues(emptyNoticeConfigForm());
+      setConfigFileName(DEFAULT_CONFIG_FILE_NAME);
+      setLinkTemplateId('');
+      setFormErrors({});
+      return;
+    }
     if (!record) return;
     setFormValues(
       noticeConfigToFormValues(record.config, record.description ?? ''),
@@ -64,7 +71,7 @@ export function useNoticeConfigEditor({
     setConfigFileName(record.configFileName || DEFAULT_CONFIG_FILE_NAME);
     setLinkTemplateId(record.linkedTemplateId ?? '');
     setFormErrors({});
-  }, [record?._id, record?.updatedAt]);
+  }, [isNew, record?._id, record?.updatedAt]);
 
   const { data: linkedTemplateDetail } = useGetNoticeTemplateQuery(
     record?.linkedTemplateId ?? '',

@@ -21,6 +21,7 @@ export function NoticeConfigPage() {
       <div className="min-w-0 flex-1">
         {page.isCreating ? (
           <NoticeConfigEditor
+            key="new"
             clientId={page.clientId}
             templates={page.templates}
             onCreated={page.handleCreated}
@@ -29,6 +30,7 @@ export function NoticeConfigPage() {
           />
         ) : page.selectedId ? (
           <NoticeConfigEditor
+            key={page.selectedId}
             clientId={page.clientId}
             configId={page.selectedId}
             templates={page.templates}
