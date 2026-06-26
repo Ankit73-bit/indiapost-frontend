@@ -1,4 +1,6 @@
 import { baseApi } from './baseApi';
+import type { AppDispatch } from '@/store';
+import { noticeTemplatesApi } from './noticeTemplatesApi';
 import type {
   ApiSuccess,
   CreateNoticeConfigBody,
@@ -8,6 +10,26 @@ import type {
   NoticeTemplate,
   PaginationMeta,
 } from '@/types';
+
+function patchNoticeConfigInCache(dispatch: AppDispatch, config: NoticeConfigRecord) {
+  dispatch(
+    noticeConfigsApi.util.updateQueryData('getNoticeConfig', config._id, () => config),
+  );
+}
+
+function invalidateConfigAndRelatedTemplates(
+  dispatch: AppDispatch,
+  configId: string,
+  linkedTemplateId?: string,
+) {
+  const tags: Array<{ type: 'NoticeConfig' | 'NoticeTemplate'; id: string }> = [
+    { type: 'NoticeConfig', id: configId },
+    { type: 'NoticeConfig', id: 'LIST' },
+    { type: 'NoticeTemplate', id: 'LIST' },
+  ];
+  if (linkedTemplateId) tags.push({ type: 'NoticeTemplate', id: linkedTemplateId });
+  dispatch(baseApi.util.invalidateTags(tags));
+}
 
 export const noticeConfigsApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -48,10 +70,19 @@ export const noticeConfigsApi = baseApi.injectEndpoints({
         body,
       }),
       transformResponse: (res: ApiSuccess<NoticeConfigRecord>) => res.data,
-      invalidatesTags: [
-        { type: 'NoticeConfig', id: 'LIST' },
-        { type: 'NoticeTemplate', id: 'LIST' },
-      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          patchNoticeConfigInCache(dispatch, data);
+          invalidateConfigAndRelatedTemplates(
+            dispatch,
+            data._id,
+            data.linkedTemplateId,
+          );
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     updateNoticeConfig: build.mutation<
@@ -69,11 +100,19 @@ export const noticeConfigsApi = baseApi.injectEndpoints({
         body,
       }),
       transformResponse: (res: ApiSuccess<NoticeConfigRecord>) => res.data,
-      invalidatesTags: (_r, _e, { configId }) => [
-        { type: 'NoticeConfig', id: configId },
-        { type: 'NoticeConfig', id: 'LIST' },
-        { type: 'NoticeTemplate', id: 'LIST' },
-      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          patchNoticeConfigInCache(dispatch, data);
+          invalidateConfigAndRelatedTemplates(
+            dispatch,
+            data._id,
+            data.linkedTemplateId,
+          );
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     deleteNoticeConfig: build.mutation<{ deleted: boolean }, string>({
@@ -82,7 +121,8 @@ export const noticeConfigsApi = baseApi.injectEndpoints({
         method: 'DELETE',
       }),
       transformResponse: (res: ApiSuccess<{ deleted: boolean }>) => res.data,
-      invalidatesTags: [
+      invalidatesTags: (_r, _e, configId) => [
+        { type: 'NoticeConfig', id: configId },
         { type: 'NoticeConfig', id: 'LIST' },
         { type: 'NoticeTemplate', id: 'LIST' },
       ],
@@ -98,11 +138,15 @@ export const noticeConfigsApi = baseApi.injectEndpoints({
         body: { templateId },
       }),
       transformResponse: (res: ApiSuccess<NoticeConfigRecord>) => res.data,
-      invalidatesTags: (_r, _e, { configId }) => [
-        { type: 'NoticeConfig', id: configId },
-        { type: 'NoticeConfig', id: 'LIST' },
-        { type: 'NoticeTemplate', id: 'LIST' },
-      ],
+      async onQueryStarted({ templateId }, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          patchNoticeConfigInCache(dispatch, data);
+          invalidateConfigAndRelatedTemplates(dispatch, data._id, templateId);
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     unlinkNoticeConfigTemplate: build.mutation<NoticeConfigRecord, string>({
@@ -111,11 +155,22 @@ export const noticeConfigsApi = baseApi.injectEndpoints({
         method: 'DELETE',
       }),
       transformResponse: (res: ApiSuccess<NoticeConfigRecord>) => res.data,
-      invalidatesTags: (_r, _e, configId) => [
-        { type: 'NoticeConfig', id: configId },
-        { type: 'NoticeConfig', id: 'LIST' },
-        { type: 'NoticeTemplate', id: 'LIST' },
-      ],
+      async onQueryStarted(configId, { dispatch, queryFulfilled, getState }) {
+        const previous = noticeConfigsApi.endpoints.getNoticeConfig.select(configId)(
+          getState(),
+        )?.data;
+        try {
+          const { data } = await queryFulfilled;
+          patchNoticeConfigInCache(dispatch, data);
+          invalidateConfigAndRelatedTemplates(
+            dispatch,
+            data._id,
+            previous?.linkedTemplateId,
+          );
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     linkTemplateConfig: build.mutation<
@@ -128,12 +183,28 @@ export const noticeConfigsApi = baseApi.injectEndpoints({
         body: { configId },
       }),
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
-      invalidatesTags: (_r, _e, { templateId, configId }) => [
-        { type: 'NoticeTemplate', id: templateId },
-        { type: 'NoticeTemplate', id: 'LIST' },
-        { type: 'NoticeConfig', id: configId },
-        { type: 'NoticeConfig', id: 'LIST' },
-      ],
+      async onQueryStarted({ templateId, configId }, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            noticeTemplatesApi.util.updateQueryData(
+              'getNoticeTemplate',
+              templateId,
+              () => data,
+            ),
+          );
+          dispatch(
+            baseApi.util.invalidateTags([
+              { type: 'NoticeTemplate', id: templateId },
+              { type: 'NoticeTemplate', id: 'LIST' },
+              { type: 'NoticeConfig', id: configId },
+              { type: 'NoticeConfig', id: 'LIST' },
+            ]),
+          );
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     unlinkTemplateConfig: build.mutation<NoticeTemplate, string>({
@@ -142,11 +213,35 @@ export const noticeConfigsApi = baseApi.injectEndpoints({
         method: 'DELETE',
       }),
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
-      invalidatesTags: (_r, _e, templateId) => [
-        { type: 'NoticeTemplate', id: templateId },
-        { type: 'NoticeTemplate', id: 'LIST' },
-        { type: 'NoticeConfig', id: 'LIST' },
-      ],
+      async onQueryStarted(templateId, { dispatch, queryFulfilled, getState }) {
+        const previous = noticeTemplatesApi.endpoints.getNoticeTemplate.select(
+          templateId,
+        )(getState())?.data;
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            noticeTemplatesApi.util.updateQueryData(
+              'getNoticeTemplate',
+              templateId,
+              () => data,
+            ),
+          );
+          dispatch(
+            baseApi.util.invalidateTags([
+              { type: 'NoticeTemplate', id: templateId },
+              { type: 'NoticeTemplate', id: 'LIST' },
+              ...(previous?.linkedConfigId
+                ? [
+                    { type: 'NoticeConfig' as const, id: previous.linkedConfigId },
+                    { type: 'NoticeConfig' as const, id: 'LIST' },
+                  ]
+                : [{ type: 'NoticeConfig' as const, id: 'LIST' }]),
+            ]),
+          );
+        } catch {
+          // mutation failed
+        }
+      },
     }),
   }),
 });

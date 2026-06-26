@@ -45,7 +45,7 @@ export function NoticeTemplatesListPage() {
           linkedConfigId={linkDialogTemplate.linkedConfigId}
           clientId={list.clientId}
           configs={list.configs}
-          onLinked={list.closeLinkConfig}
+          onLinked={() => void list.handleConfigLinked()}
         />
       )}
     </div>

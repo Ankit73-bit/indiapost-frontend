@@ -23,7 +23,9 @@ export function NoticeTemplateDetailPage() {
 
       <NoticeTemplateVersionWorkspace
         template={page.template}
-        onUpdated={() => void page.refetch()}
+        onUpdated={() => {
+          void page.refetch();
+        }}
       />
     </div>
   );

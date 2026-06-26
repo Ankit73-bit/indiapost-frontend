@@ -117,7 +117,9 @@ export function NoticeTemplateEditor({
         linkedConfigId={editor.template.linkedConfigId}
         clientId={clientId ?? ''}
         configs={configsData?.data ?? []}
-        onLinked={() => onTemplateUpdated?.(editor.template)}
+        onLinked={() => {
+          onTemplateUpdated?.(editor.template);
+        }}
       />
     </div>
   );

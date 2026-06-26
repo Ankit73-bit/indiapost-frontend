@@ -21,12 +21,12 @@ export function useNoticeTemplatesListPage() {
     null,
   );
 
-  const { data, isLoading } = useListNoticeTemplatesQuery(
+  const { data, isLoading, refetch: refetchTemplates } = useListNoticeTemplatesQuery(
     { clientId, page, limit: NOTICE_TEMPLATES_PAGE_SIZE },
     { skip: !clientId },
   );
 
-  const { data: configsData } = useListNoticeConfigsQuery(
+  const { data: configsData, refetch: refetchConfigs } = useListNoticeConfigsQuery(
     { clientId: clientId!, page: NOTICE_CONFIG_LIST_PAGE, limit: NOTICE_CONFIG_LIST_LIMIT },
     { skip: !clientId },
   );
@@ -102,6 +102,11 @@ export function useNoticeTemplatesListPage() {
     setLinkDialogTemplateId(null);
   }
 
+  async function handleConfigLinked() {
+    closeLinkConfig();
+    await Promise.all([refetchTemplates(), refetchConfigs()]);
+  }
+
   return {
     clientId,
     isAdmin,
@@ -122,5 +127,6 @@ export function useNoticeTemplatesListPage() {
     linkDialogTemplateId,
     openLinkConfig,
     closeLinkConfig,
+    handleConfigLinked,
   };
 }

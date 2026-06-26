@@ -20,7 +20,9 @@ export function NoticeTemplateEditorPage() {
     <NoticeTemplateEditor
       template={page.template}
       listUrl={page.listUrl}
-      onTemplateUpdated={() => void page.refetch()}
+      onTemplateUpdated={() => {
+        void page.refetch();
+      }}
     />
   );
 }

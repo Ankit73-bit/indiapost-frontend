@@ -1,4 +1,5 @@
 import { baseApi } from './baseApi';
+import type { AppDispatch } from '@/store';
 import type {
   ApiSuccess,
   CreateNoticeTemplateBody,
@@ -8,6 +9,27 @@ import type {
   PaginationMeta,
   VariableValidationResult,
 } from '@/types';
+
+function syncTemplateMutationCache(dispatch: AppDispatch, template: NoticeTemplate) {
+  dispatch(
+    noticeTemplatesApi.util.updateQueryData(
+      'getNoticeTemplate',
+      template._id,
+      () => template,
+    ),
+  );
+  const tags: Array<{ type: 'NoticeTemplate' | 'NoticeConfig'; id: string }> = [
+    { type: 'NoticeTemplate', id: template._id },
+    { type: 'NoticeTemplate', id: 'LIST' },
+  ];
+  if (template.linkedConfigId) {
+    tags.push(
+      { type: 'NoticeConfig', id: template.linkedConfigId },
+      { type: 'NoticeConfig', id: 'LIST' },
+    );
+  }
+  dispatch(baseApi.util.invalidateTags(tags));
+}
 
 export const noticeTemplatesApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -48,7 +70,14 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
         body,
       }),
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
-      invalidatesTags: [{ type: 'NoticeTemplate', id: 'LIST' }],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          syncTemplateMutationCache(dispatch, data);
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     createNoticeVersion: build.mutation<
@@ -61,10 +90,14 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
         body,
       }),
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
-      invalidatesTags: (_r, _e, { templateId }) => [
-        { type: 'NoticeTemplate', id: templateId },
-        { type: 'NoticeTemplate', id: 'LIST' },
-      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          syncTemplateMutationCache(dispatch, data);
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     updateNoticeVersionConfig: build.mutation<
@@ -77,9 +110,14 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
         body: { noticeConfig, configFileName },
       }),
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
-      invalidatesTags: (_r, _e, { templateId }) => [
-        { type: 'NoticeTemplate', id: templateId },
-      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          syncTemplateMutationCache(dispatch, data);
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     updateNoticeVersionLayout: build.mutation<
@@ -92,9 +130,14 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
         body: { with_header },
       }),
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
-      invalidatesTags: (_r, _e, { templateId }) => [
-        { type: 'NoticeTemplate', id: templateId },
-      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          syncTemplateMutationCache(dispatch, data);
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     getNoticeVersionValidation: build.query<
@@ -134,9 +177,14 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
         body: { mappings },
       }),
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
-      invalidatesTags: (_r, _e, { templateId }) => [
-        { type: 'NoticeTemplate', id: templateId },
-      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          syncTemplateMutationCache(dispatch, data);
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     importNoticeVersionTemplateMap: build.mutation<
@@ -153,9 +201,14 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
         };
       },
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
-      invalidatesTags: (_r, _e, { templateId }) => [
-        { type: 'NoticeTemplate', id: templateId },
-      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          syncTemplateMutationCache(dispatch, data);
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     uploadNoticeVersionFiles: build.mutation<
@@ -174,9 +227,14 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
         };
       },
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
-      invalidatesTags: (_r, _e, { templateId }) => [
-        { type: 'NoticeTemplate', id: templateId },
-      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          syncTemplateMutationCache(dispatch, data);
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     getNoticeVersionFile: build.query<
@@ -200,9 +258,14 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
         body: { content },
       }),
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
-      invalidatesTags: (_r, _e, { templateId }) => [
-        { type: 'NoticeTemplate', id: templateId },
-      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          syncTemplateMutationCache(dispatch, data);
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     activateNoticeVersion: build.mutation<
@@ -214,10 +277,14 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
         method: 'POST',
       }),
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
-      invalidatesTags: (_r, _e, { templateId }) => [
-        { type: 'NoticeTemplate', id: templateId },
-        { type: 'NoticeTemplate', id: 'LIST' },
-      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          syncTemplateMutationCache(dispatch, data);
+        } catch {
+          // mutation failed
+        }
+      },
     }),
 
     deactivateNoticeVersion: build.mutation<
@@ -229,10 +296,14 @@ export const noticeTemplatesApi = baseApi.injectEndpoints({
         method: 'POST',
       }),
       transformResponse: (res: ApiSuccess<NoticeTemplate>) => res.data,
-      invalidatesTags: (_r, _e, { templateId }) => [
-        { type: 'NoticeTemplate', id: templateId },
-        { type: 'NoticeTemplate', id: 'LIST' },
-      ],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          syncTemplateMutationCache(dispatch, data);
+        } catch {
+          // mutation failed
+        }
+      },
     }),
   }),
 });
