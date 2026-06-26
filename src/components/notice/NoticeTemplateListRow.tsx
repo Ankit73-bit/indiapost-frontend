@@ -50,10 +50,11 @@ export function NoticeTemplateListRow({
         {linkedConfig ? (
           <button
             type="button"
-            className="text-left text-sm text-primary hover:underline"
+            className="max-w-[180px] truncate text-left font-mono text-sm text-primary hover:underline"
             onClick={() => onOpenLinkConfig(template._id)}
+            title={linkedConfig.configFileName}
           >
-            {linkedConfig.name}
+            {linkedConfig.configFileName}
           </button>
         ) : (
           <button
@@ -61,7 +62,7 @@ export function NoticeTemplateListRow({
             className="text-sm text-primary hover:underline"
             onClick={() => onOpenLinkConfig(template._id)}
           >
-            Link
+            Assign config
           </button>
         )}
       </td>
@@ -81,7 +82,7 @@ export function NoticeTemplateListRow({
             className="text-sm text-primary hover:underline"
             onClick={() => onOpenSampleExcel(template._id)}
           >
-            Excel
+            Upload sample
           </button>
         )}
       </td>

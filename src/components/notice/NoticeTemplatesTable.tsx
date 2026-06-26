@@ -47,8 +47,8 @@ export function NoticeTemplatesTable({
         <thead>
           <tr className="border-b border-border text-left text-muted-foreground">
             <th className="px-4 py-3 font-medium">Template name</th>
-            <th className="px-4 py-3 font-medium">Config file</th>
-            <th className="px-4 py-3 font-medium">Sample Excel</th>
+            <th className="px-4 py-3 font-medium">Config</th>
+            <th className="px-4 py-3 font-medium">Sample file</th>
             <th className="px-4 py-3 font-medium">Default version</th>
             <th className="px-4 py-3 font-medium">Status</th>
             <th className="px-4 py-3 font-medium">Versions</th>

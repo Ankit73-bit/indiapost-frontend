@@ -6,7 +6,6 @@ import {
   useActivateNoticeVersionMutation,
   useUpdateNoticeVersionConfigMutation,
   useUpdateNoticeVersionLayoutMutation,
-  useGetNoticeVersionValidationQuery,
 } from '@/store/api/noticeTemplatesApi';
 import type { NoticeTemplate } from '@/types';
 import { toast } from '@/lib/toast';
@@ -70,19 +69,13 @@ export function useNoticeTemplateVersionWorkspace({
   const imageFileNames =
     detailVersion?.fileNames.filter((f) => /\.(png|jpe?g|webp)$/i.test(f)) ?? [];
 
-  const { data: serverValidation } = useGetNoticeVersionValidationQuery(
-    { templateId: template._id, version: selectedVersion },
-    { skip: !detailVersion },
-  );
-
   const validation = useMemo(() => {
-    if (serverValidation) return serverValidation;
     if (!detailVersion) return null;
     return validateVariablesAgainstConfig(
       detailVersion.noticeConfig,
       detailVersion.metadata.variables,
     );
-  }, [serverValidation, detailVersion]);
+  }, [detailVersion]);
 
   // Re-init form whenever the selected version or its data changes
   useEffect(() => {
