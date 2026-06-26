@@ -591,6 +591,19 @@ export interface NoticeTemplate {
   updatedAt: string;
 }
 
+export interface SampleExcelValidationResult {
+  isValid: boolean;
+  requiredColumns: string[];
+  indexedColumns: string[];
+  foundColumns: string[];
+  missingColumns: string[];
+  incorrectNaming: Array<{ expected: string; found: string }>;
+  rowCount: number;
+  maxRows: number;
+  tooManyRows: boolean;
+  noDataRows: boolean;
+}
+
 export interface NoticeConfigRecord {
   _id: string;
   clientId: string;
@@ -600,6 +613,7 @@ export interface NoticeConfigRecord {
   configFileName: string;
   linkedTemplateId?: string;
   sampleExcelFileName?: string;
+  sampleExcelValidated?: boolean;
   description?: string;
   createdAt: string;
   updatedAt: string;

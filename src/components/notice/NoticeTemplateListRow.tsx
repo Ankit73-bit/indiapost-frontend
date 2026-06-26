@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { downloadNoticeConfigRecord } from '@/lib/noticeConfig/downloadConfigFile';
+import { downloadSampleExcelFile } from '@/store/api/noticeSampleExcelApi';
 import { formatDate } from '@/lib/helpers';
 import type { NoticeConfigRecord, NoticeTemplate } from '@/types';
 
@@ -38,7 +39,9 @@ export function NoticeTemplateListRow({
 
   const sampleExcelFileName = linkedConfig?.sampleExcelFileName;
   const canDownloadConfig = Boolean(linkedConfig);
-  const canDownloadSampleExcel = Boolean(sampleExcelFileName);
+  const canDownloadSampleExcel = Boolean(
+    linkedConfig?.sampleExcelValidated && linkedConfig._id,
+  );
 
   return (
     <tr
@@ -67,7 +70,9 @@ export function NoticeTemplateListRow({
         )}
       </td>
       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-        {sampleExcelFileName ? (
+        {!linkedConfig ? (
+          <span className="text-sm text-muted-foreground">Assign config first</span>
+        ) : sampleExcelFileName ? (
           <button
             type="button"
             className="max-w-[180px] truncate text-left text-sm text-primary hover:underline"
@@ -138,7 +143,17 @@ export function NoticeTemplateListRow({
             </DropdownMenuItem>
             <DropdownMenuItem
               disabled={!canDownloadSampleExcel}
-              onClick={() => onOpenSampleExcel(template._id)}
+              onClick={() => {
+                if (!linkedConfig) return;
+                void downloadSampleExcelFile(linkedConfig._id).then(({ blob, fileName }) => {
+                  const url = URL.createObjectURL(blob);
+                  const anchor = document.createElement('a');
+                  anchor.href = url;
+                  anchor.download = fileName;
+                  anchor.click();
+                  URL.revokeObjectURL(url);
+                });
+              }}
             >
               <Sheet className="mr-2 h-3.5 w-3.5" />
               Download sample Excel
