@@ -599,6 +599,7 @@ export interface NoticeConfigRecord {
   config: NoticeConfig;
   configFileName: string;
   linkedTemplateId?: string;
+  sampleExcelFileName?: string;
   description?: string;
   createdAt: string;
   updatedAt: string;

@@ -7,7 +7,7 @@ export function useNoticeTemplateEditorPage() {
   const { templateId = '' } = useParams();
   const { isAdmin, clientId } = useNoticeClientContext();
 
-  const { data: template, isLoading, isError } = useGetNoticeTemplateQuery(
+  const { data: template, isLoading, isError, refetch } = useGetNoticeTemplateQuery(
     templateId,
     { skip: !templateId },
   );
@@ -19,5 +19,6 @@ export function useNoticeTemplateEditorPage() {
     isLoading,
     isError,
     listUrl,
+    refetch,
   };
 }

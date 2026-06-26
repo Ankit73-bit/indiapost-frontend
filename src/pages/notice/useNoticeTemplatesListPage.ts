@@ -1,9 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNoticeClientContext } from '@/hooks/useNoticeClientContext';
+import { useListNoticeConfigsQuery } from '@/store/api/noticeConfigsApi';
 import { useListNoticeTemplatesQuery } from '@/store/api/noticeTemplatesApi';
+import {
+  NOTICE_CONFIG_LIST_LIMIT,
+  NOTICE_CONFIG_LIST_PAGE,
+} from './noticeConfigPage.constants';
 import { NOTICE_TEMPLATES_PAGE_SIZE } from './noticeTemplatesListPage.constants';
 import type { StatusFilter } from './noticeTemplatesListPage.types';
+import type { NoticeConfigRecord } from '@/types';
 
 export function useNoticeTemplatesListPage() {
   const navigate = useNavigate();
@@ -11,11 +17,29 @@ export function useNoticeTemplatesListPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [linkDialogTemplateId, setLinkDialogTemplateId] = useState<string | null>(
+    null,
+  );
 
   const { data, isLoading } = useListNoticeTemplatesQuery(
     { clientId, page, limit: NOTICE_TEMPLATES_PAGE_SIZE },
     { skip: !clientId },
   );
+
+  const { data: configsData } = useListNoticeConfigsQuery(
+    { clientId: clientId!, page: NOTICE_CONFIG_LIST_PAGE, limit: NOTICE_CONFIG_LIST_LIMIT },
+    { skip: !clientId },
+  );
+
+  const configs = configsData?.data ?? [];
+
+  const configById = useMemo(() => {
+    const map = new Map<string, NoticeConfigRecord>();
+    for (const config of configs) {
+      map.set(config._id, config);
+    }
+    return map;
+  }, [configs]);
 
   const filtered = useMemo(() => {
     let items = data?.data ?? [];
@@ -62,8 +86,25 @@ export function useNoticeTemplatesListPage() {
     navigate(url);
   }
 
+  function openSampleExcel(templateId: string) {
+    const url =
+      isAdmin && clientId
+        ? `/notice-generator/templates/${templateId}/sample-excel?clientId=${clientId}`
+        : `/notice-generator/templates/${templateId}/sample-excel`;
+    navigate(url);
+  }
+
+  function openLinkConfig(templateId: string) {
+    setLinkDialogTemplateId(templateId);
+  }
+
+  function closeLinkConfig() {
+    setLinkDialogTemplateId(null);
+  }
+
   return {
     clientId,
+    isAdmin,
     search,
     setSearch,
     statusFilter,
@@ -71,9 +112,15 @@ export function useNoticeTemplatesListPage() {
     data,
     isLoading,
     filtered,
+    configs,
+    configById,
     createUrl,
     setPage,
     openTemplate,
     openMapping,
+    openSampleExcel,
+    linkDialogTemplateId,
+    openLinkConfig,
+    closeLinkConfig,
   };
 }

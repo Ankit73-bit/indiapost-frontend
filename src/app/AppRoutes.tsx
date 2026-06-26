@@ -16,6 +16,7 @@ import { NoticeTemplateDetailPage } from '@/pages/notice/NoticeTemplateDetailPag
 import { NoticeTemplateEditorPage } from '@/pages/notice/NoticeTemplateEditorPage';
 import { NoticeConfigPage } from '@/pages/notice/NoticeConfigPage';
 import { NoticeExcelPage } from '@/pages/notice/NoticeExcelPage';
+import { NoticeSampleExcelPage } from '@/pages/notice/NoticeSampleExcelPage';
 import { NoticeTemplateMappingRoutePage } from '@/pages/notice/NoticeTemplateMappingRoutePage';
 
 export function AppRoutes() {
@@ -48,6 +49,10 @@ export function AppRoutes() {
           <Route
             path="templates/:templateId/mapping"
             element={<NoticeTemplateMappingRoutePage />}
+          />
+          <Route
+            path="templates/:templateId/sample-excel"
+            element={<NoticeSampleExcelPage />}
           />
           <Route
             path="templates/:templateId"

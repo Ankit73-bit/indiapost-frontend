@@ -74,11 +74,6 @@ export function useNoticeTemplateEditor({
       ? `/notice-generator/templates/${template._id}/mapping?clientId=${clientId}&version=${selectedVersion.version}`
       : `/notice-generator/templates/${template._id}/mapping?version=${selectedVersion.version}`;
 
-  const linkConfigUrl =
-    isAdmin && clientId
-      ? `/notice-generator/config?clientId=${clientId}`
-      : '/notice-generator/config';
-
   const linkedConfigFile =
     linkedConfig?.configFileName ??
     selectedVersion.metadata.configFileName ??
@@ -414,7 +409,6 @@ export function useNoticeTemplateEditor({
     linkedConfigFile,
     configPageUrl,
     mappingPageUrl,
-    linkConfigUrl,
     isReadOnly,
     isImageFile,
     editorTabs,

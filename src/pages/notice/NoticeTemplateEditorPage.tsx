@@ -16,5 +16,11 @@ export function NoticeTemplateEditorPage() {
     return <NoticeTemplatePageNotFound listUrl={page.listUrl} />;
   }
 
-  return <NoticeTemplateEditor template={page.template} listUrl={page.listUrl} />;
+  return (
+    <NoticeTemplateEditor
+      template={page.template}
+      listUrl={page.listUrl}
+      onTemplateUpdated={() => void page.refetch()}
+    />
+  );
 }

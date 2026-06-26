@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CodeEditorPane } from './CodeEditorPane';
 import { FilesSidebar } from './FilesSidebar';
 import { NoticeTemplateEditorHeader } from './NoticeTemplateEditorHeader';
@@ -8,13 +9,24 @@ import type { NoticeTemplateEditorProps } from './noticeTemplateEditor.types';
 import { TemplatePreviewPanel } from './TemplatePreviewPanel';
 import { VersionsSidebar } from './VersionsSidebar';
 import { useNoticeTemplateEditor } from '@/hooks/useNoticeTemplateEditor';
+import { LinkConfigDialog } from '@/components/notice/config/LinkConfigDialog';
+import { useNoticeClientContext } from '@/hooks/useNoticeClientContext';
+import { useListNoticeConfigsQuery } from '@/store/api/noticeConfigsApi';
+import { NOTICE_CONFIG_LIST_LIMIT, NOTICE_CONFIG_LIST_PAGE } from '@/pages/notice/noticeConfigPage.constants';
 
 export function NoticeTemplateEditor({
   template: initialTemplate,
   listUrl,
   onTemplateUpdated,
 }: NoticeTemplateEditorProps) {
+  const { clientId } = useNoticeClientContext();
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const editor = useNoticeTemplateEditor({ initialTemplate, onTemplateUpdated });
+
+  const { data: configsData } = useListNoticeConfigsQuery(
+    { clientId: clientId!, page: NOTICE_CONFIG_LIST_PAGE, limit: NOTICE_CONFIG_LIST_LIMIT },
+    { skip: !clientId },
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-background text-foreground shadow-sm">
@@ -26,7 +38,7 @@ export function NoticeTemplateEditor({
         linkedConfig={editor.linkedConfig}
         linkedConfigFile={editor.linkedConfigFile}
         configPageUrl={editor.configPageUrl}
-        linkConfigUrl={editor.linkConfigUrl}
+        onOpenLinkConfig={() => setLinkDialogOpen(true)}
       />
 
       {editor.isReadOnly && <NoticeTemplateEditorReadOnlyBanner />}
@@ -97,6 +109,16 @@ export function NoticeTemplateEditor({
             />
           )}
       </div>
+
+      <LinkConfigDialog
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        templateId={editor.template._id}
+        linkedConfigId={editor.template.linkedConfigId}
+        clientId={clientId ?? ''}
+        configs={configsData?.data ?? []}
+        onLinked={() => onTemplateUpdated?.(editor.template)}
+      />
     </div>
   );
 }
