@@ -23,17 +23,6 @@ export type NoticeConfigEditorProps = {
   editorUrl: NoticeConfigEditorUrlBuilder;
 };
 
-export type NoticeConfigSidebarProps = {
-  clientId: string;
-  clientName: string | undefined;
-  configs: NoticeConfigListItem[];
-  listLoading: boolean;
-  selectedId: string | null;
-  isCreating: boolean;
-  onStartCreate: () => void;
-  onSelectConfig: (id: string) => void;
-};
-
 export type NoticeConfigTemplateLinkSectionProps = {
   isNew: boolean;
   templates: NoticeConfigTemplateOption[];

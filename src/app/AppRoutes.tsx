@@ -14,7 +14,8 @@ import { NoticeTemplatesListPage } from '@/pages/notice/NoticeTemplatesListPage'
 import { NoticeTemplateCreatePage } from '@/pages/notice/NoticeTemplateCreatePage';
 import { NoticeTemplateDetailPage } from '@/pages/notice/NoticeTemplateDetailPage';
 import { NoticeTemplateEditorPage } from '@/pages/notice/NoticeTemplateEditorPage';
-import { NoticeConfigPage } from '@/pages/notice/NoticeConfigPage';
+import { NoticeConfigListPage } from '@/pages/notice/NoticeConfigListPage';
+import { NoticeConfigDetailPage } from '@/pages/notice/NoticeConfigDetailPage';
 import { NoticeExcelPage } from '@/pages/notice/NoticeExcelPage';
 import { NoticeSampleExcelPage } from '@/pages/notice/NoticeSampleExcelPage';
 import { NoticeTemplateMappingRoutePage } from '@/pages/notice/NoticeTemplateMappingRoutePage';
@@ -58,7 +59,8 @@ export function AppRoutes() {
             path="templates/:templateId"
             element={<NoticeTemplateDetailPage />}
           />
-          <Route path="config" element={<NoticeConfigPage />} />
+          <Route path="config" element={<NoticeConfigListPage />} />
+          <Route path="config/:configId" element={<NoticeConfigDetailPage />} />
           <Route path="excel" element={<NoticeExcelPage />} />
         </Route>
 
