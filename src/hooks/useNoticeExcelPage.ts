@@ -47,10 +47,15 @@ export function useNoticeExcelPage(clientId: string) {
     setErrorMsg('');
 
     try {
-      const result = await fetchBatchNoticePdf(templateId, templateVersion, excelFile, {
-        mergePdfs,
-        individualPdfs: includeIndividualPdfs,
-      });
+      const result = await fetchBatchNoticePdf(
+        templateId,
+        templateVersion,
+        excelFile,
+        {
+          mergePdfs,
+          individualPdfs: includeIndividualPdfs,
+        },
+      );
       const url = URL.createObjectURL(result.blob);
       setBlobUrl(url);
       setZipFileName(result.fileName);
@@ -60,7 +65,9 @@ export function useNoticeExcelPage(clientId: string) {
       setMergedPdfCount(result.mergedPdfCount);
       setPageState('done');
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Batch generation failed');
+      setErrorMsg(
+        err instanceof Error ? err.message : 'Batch generation failed',
+      );
       setPageState('error');
     }
   }

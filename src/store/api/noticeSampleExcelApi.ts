@@ -1,4 +1,9 @@
-import type { ApiSuccess, NoticeConfigRecord, SampleExcelValidationResult } from '@/types';
+import type {
+  ApiSuccess,
+  NoticeConfigRecord,
+  SampleExcelPreviewData,
+  SampleExcelValidationResult,
+} from '@/types';
 
 async function credFetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const { getApiBaseUrl } = await import('@/lib/apiBase');
@@ -16,6 +21,12 @@ async function credFetchJson<T>(url: string, init?: RequestInit): Promise<T> {
     });
   }
   return json.data as T;
+}
+
+export async function fetchSampleExcelPreview(configId: string) {
+  return credFetchJson<SampleExcelPreviewData>(
+    `/api/v1/notice-configs/${configId}/sample-excel/preview`,
+  );
 }
 
 export async function fetchRequiredExcelColumns(configId: string) {

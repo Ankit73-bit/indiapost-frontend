@@ -1,18 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useNoticeClientContext } from '@/hooks/useNoticeClientContext';
 import { useGetNoticeConfigQuery } from '@/store/api/noticeConfigsApi';
 import { useGetNoticeTemplateQuery } from '@/store/api/noticeTemplatesApi';
 import {
   fetchRequiredExcelColumns,
+  fetchSampleExcelPreview,
   fetchTestPdfFromSampleExcel,
   uploadSampleExcelFile,
   validateSampleExcelFile,
 } from '@/store/api/noticeSampleExcelApi';
 import { getNoticeTemplatesListUrl } from '@/pages/notice/noticePage.utils';
+import { mergeVisibleColumns } from '@/lib/sampleExcel/previewColumns';
 import { getApiErrorMessage } from '@/lib/helpers';
 import { toast } from '@/lib/toast';
-import type { SampleExcelValidationResult } from '@/types';
+import type { SampleExcelPreviewData, SampleExcelValidationResult } from '@/types';
+
+export type SampleExcelPageMode = 'upload' | 'preview' | 'update';
 
 export function useNoticeSampleExcelPage() {
   const { templateId = '' } = useParams();
@@ -34,12 +38,15 @@ export function useNoticeSampleExcelPage() {
   const [requiredColumns, setRequiredColumns] = useState<string[]>([]);
   const [indexedColumns, setIndexedColumns] = useState<string[]>([]);
   const [maxRows, setMaxRows] = useState(20);
+  const [pageMode, setPageMode] = useState<SampleExcelPageMode>('upload');
+  const [preview, setPreview] = useState<SampleExcelPreviewData | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
   const [excelFile, setExcelFileState] = useState<File | null>(null);
-  const [validation, setValidation] = useState<SampleExcelValidationResult | null>(
-    null,
-  );
+  const [validation, setValidation] = useState<SampleExcelValidationResult | null>(null);
   const [validating, setValidating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pendingSave, setPendingSave] = useState(false);
   const [testPdfLoading, setTestPdfLoading] = useState(false);
   const [testPdfUrl, setTestPdfUrl] = useState<string | null>(null);
   const [testPdfFileName, setTestPdfFileName] = useState('test-notice.pdf');
@@ -57,6 +64,32 @@ export function useNoticeSampleExcelPage() {
     );
   }, [template]);
 
+  const applyPreview = useCallback(
+    (nextPreview: SampleExcelPreviewData, preserveColumnSelection = true) => {
+      setPreview(nextPreview);
+      setVisibleColumns((previous) =>
+        preserveColumnSelection
+          ? mergeVisibleColumns(previous, nextPreview.columns)
+          : mergeVisibleColumns([], nextPreview.columns),
+      );
+    },
+    [],
+  );
+
+  const loadSavedPreview = useCallback(async () => {
+    if (!linkedConfigId) return;
+    setPreviewLoading(true);
+    try {
+      const nextPreview = await fetchSampleExcelPreview(linkedConfigId);
+      applyPreview(nextPreview);
+      setPageMode('preview');
+    } catch {
+      setPreview(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [applyPreview, linkedConfigId]);
+
   useEffect(() => {
     if (!linkedConfigId) return;
     void fetchRequiredExcelColumns(linkedConfigId)
@@ -73,6 +106,16 @@ export function useNoticeSampleExcelPage() {
   }, [linkedConfigId, linkedConfig?.updatedAt]);
 
   useEffect(() => {
+    if (!linkedConfigId || !isValidated) {
+      if (!pendingSave) {
+        setPageMode('upload');
+      }
+      return;
+    }
+    void loadSavedPreview();
+  }, [linkedConfigId, isValidated, linkedConfig?.updatedAt, loadSavedPreview, pendingSave]);
+
+  useEffect(() => {
     return () => {
       if (testPdfUrl) URL.revokeObjectURL(testPdfUrl);
     };
@@ -80,6 +123,19 @@ export function useNoticeSampleExcelPage() {
 
   function setExcelFile(file: File | null) {
     setExcelFileState(file);
+    setValidation(null);
+  }
+
+  function startUpdate() {
+    setPageMode('update');
+    setExcelFile(null);
+    setValidation(null);
+    setPendingSave(false);
+  }
+
+  function cancelUpdate() {
+    setPageMode('preview');
+    setExcelFile(null);
     setValidation(null);
   }
 
@@ -91,7 +147,14 @@ export function useNoticeSampleExcelPage() {
       const result = await validateSampleExcelFile(linkedConfigId, excelFile);
       setValidation(result);
       if (result.isValid) {
-        toast.success('Sample Excel headers are valid');
+        if (pageMode === 'upload') {
+          if (result.preview) applyPreview(result.preview, false);
+          setPendingSave(true);
+          setPageMode('preview');
+          toast.success('Sample Excel is valid — review the preview and save');
+        } else {
+          toast.success('New file passed validation — click Update Sample Excel to replace');
+        }
       } else {
         toast.error('Sample Excel validation failed');
       }
@@ -108,12 +171,44 @@ export function useNoticeSampleExcelPage() {
     try {
       const result = await uploadSampleExcelFile(linkedConfigId, excelFile);
       setValidation(result.validation);
+      if (result.validation.preview) {
+        applyPreview(result.validation.preview);
+      } else {
+        await loadSavedPreview();
+      }
+      setPendingSave(false);
+      setExcelFile(null);
+      setPageMode('preview');
       await refetchConfig();
       toast.success('Sample Excel saved');
     } catch (err) {
       const validationData = (err as { data?: SampleExcelValidationResult }).data;
       if (validationData) setValidation(validationData);
       toast.error(getApiErrorMessage(err, 'Failed to save sample Excel'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleUpdateSample() {
+    if (!linkedConfigId || !excelFile || !validation?.isValid) return;
+    setSaving(true);
+    try {
+      const result = await uploadSampleExcelFile(linkedConfigId, excelFile);
+      setValidation(null);
+      if (result.validation.preview) {
+        applyPreview(result.validation.preview);
+      } else {
+        await loadSavedPreview();
+      }
+      setExcelFile(null);
+      setPageMode('preview');
+      await refetchConfig();
+      toast.success('Sample Excel updated');
+    } catch (err) {
+      const validationData = (err as { data?: SampleExcelValidationResult }).data;
+      if (validationData) setValidation(validationData);
+      toast.error(getApiErrorMessage(err, 'Failed to update sample Excel'));
     } finally {
       setSaving(false);
     }
@@ -142,6 +237,14 @@ export function useNoticeSampleExcelPage() {
     }
   }
 
+  const showUploadSection = pageMode === 'upload';
+  const showPreviewSection = pageMode === 'preview' || pageMode === 'update';
+  const showUpdateSection = pageMode === 'update';
+  const canValidate = Boolean(excelFile);
+  const canSave = Boolean(pendingSave && validation?.isValid && excelFile);
+  const canUpdate = Boolean(showUpdateSection && validation?.isValid && excelFile);
+  const canTestPdf = isValidated && !pendingSave && pageMode !== 'update';
+
   return {
     template,
     templateLoading,
@@ -150,6 +253,11 @@ export function useNoticeSampleExcelPage() {
     configLoading,
     listUrl,
     isValidated,
+    pageMode,
+    preview,
+    previewLoading,
+    visibleColumns,
+    setVisibleColumns,
     requiredColumns,
     indexedColumns,
     maxRows,
@@ -158,12 +266,23 @@ export function useNoticeSampleExcelPage() {
     validation,
     validating,
     saving,
+    pendingSave,
+    showUploadSection,
+    showPreviewSection,
+    showUpdateSection,
+    canValidate,
+    canSave,
+    canUpdate,
+    canTestPdf,
     testPdfLoading,
     testPdfUrl,
     testPdfFileName,
     selectedVersion,
+    startUpdate,
+    cancelUpdate,
     handleValidate,
     handleSaveSample,
+    handleUpdateSample,
     handleTestPdf,
   };
 }

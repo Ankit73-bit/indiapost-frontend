@@ -591,6 +591,12 @@ export interface NoticeTemplate {
   updatedAt: string;
 }
 
+export interface SampleExcelPreviewData {
+  columns: string[];
+  rows: string[][];
+  totalRowCount: number;
+}
+
 export interface SampleExcelValidationResult {
   isValid: boolean;
   requiredColumns: string[];
@@ -602,6 +608,7 @@ export interface SampleExcelValidationResult {
   maxRows: number;
   tooManyRows: boolean;
   noDataRows: boolean;
+  preview?: SampleExcelPreviewData;
 }
 
 export interface NoticeConfigRecord {
