@@ -12,6 +12,7 @@ import './api/syncApi';
 import './api/usersApi';
 import './api/noticeTemplatesApi';
 import './api/noticeConfigsApi';
+import './api/noticeExcelsApi';
 
 export const store = configureStore({
   reducer: {

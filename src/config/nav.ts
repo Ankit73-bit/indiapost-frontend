@@ -57,6 +57,7 @@ export const NAV_ITEMS: NavItem[] = [
       { to: '/notice-generator/templates', label: 'Template' },
       { to: '/notice-generator/config', label: 'Config' },
       { to: '/notice-generator/excel', label: 'Excel' },
+      { to: '/notice-generator/generator', label: 'Generator' },
     ],
   },
   {

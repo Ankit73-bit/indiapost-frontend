@@ -654,3 +654,73 @@ export interface CreateNoticeTemplateBody {
   noticeId?: string;
   description?: string;
 }
+
+export type NoticeExcelStatus = 'VALIDATED' | 'VALIDATION_FAILED' | 'PROCESSING';
+
+export interface NoticeExcelRecord {
+  _id: string;
+  clientId: string;
+  name: string;
+  slug: string;
+  noticeName?: string;
+  noticeType?: string;
+  noticeDate: string;
+  dispatchDate?: string;
+  description?: string;
+  templateId?: string;
+  templateVersion?: string;
+  configId?: string;
+  templateName?: string;
+  configName?: string;
+  excelFileName?: string;
+  rowCount: number;
+  status: NoticeExcelStatus;
+  validationResult?: SampleExcelValidationResult;
+  uploadedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NoticeExcelDetail extends NoticeExcelRecord {
+  templateName?: string;
+  configName?: string;
+  uploadedByName?: string;
+}
+
+export interface MatchingTemplate {
+  templateId: string;
+  templateName: string;
+  noticeId: string;
+  configId: string;
+  configName: string;
+  activeVersion: string;
+  validation: SampleExcelValidationResult;
+}
+
+export interface ValidateProductionExcelResult {
+  isValid: boolean;
+  validation: SampleExcelValidationResult;
+  matchingTemplates: MatchingTemplate[];
+  error?: string;
+}
+
+export interface ListNoticeExcelsQuery {
+  clientId: string;
+  search?: string;
+  status?: NoticeExcelStatus;
+  page?: number;
+  limit?: number;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface CreateNoticeExcelBody {
+  clientId: string;
+  name: string;
+  slug: string;
+  noticeName: string;
+  noticeType: string;
+  noticeDate: string;
+  dispatchDate?: string;
+  description?: string;
+  templateId: string;
+}
