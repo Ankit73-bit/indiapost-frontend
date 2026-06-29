@@ -159,13 +159,11 @@ export function useNoticeExcelsListPage() {
     }
   }
 
-  function handleExcelFile(file: File | null) {
-    setExcelFile(file);
-    setValidation(null);
-    setMatchingTemplates([]);
-  }
-
-  async function runValidation(file: File, targetClientId: string) {
+  async function runValidation(
+    file: File,
+    targetClientId: string,
+    options?: { silent?: boolean },
+  ) {
     setValidating(true);
     setValidation(null);
     setMatchingTemplates([]);
@@ -174,15 +172,32 @@ export function useNoticeExcelsListPage() {
       setValidation(result.validation);
       setMatchingTemplates(result.matchingTemplates);
       if (!result.isValid) {
-        toast.error(result.error ?? 'Excel validation failed');
+        if (!options?.silent) {
+          toast.error(result.error ?? 'Excel validation failed');
+        }
         return null;
       }
       return result;
     } catch (err) {
-      toast.error(getApiErrorMessage(err, 'Validation failed'));
+      if (!options?.silent) {
+        toast.error(getApiErrorMessage(err, 'Validation failed'));
+      }
       return null;
     } finally {
       setValidating(false);
+    }
+  }
+
+  function handleExcelFile(file: File | null) {
+    setExcelFile(file);
+    setValidation(null);
+    setMatchingTemplates([]);
+
+    if (!file) return;
+
+    const targetClientId = replacing?.clientId ?? watchedClientId ?? clientId;
+    if (targetClientId) {
+      void runValidation(file, targetClientId, { silent: true });
     }
   }
 

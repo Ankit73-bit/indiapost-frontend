@@ -1,6 +1,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -76,89 +77,108 @@ export function NoticeExcelFormDialog({
 }: NoticeExcelFormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="shrink-0 border-b border-border px-4 py-4">
           <DialogTitle>
             {replacing ? 'Replace Excel' : 'Create Excel'}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {!replacing && (
-            <>
-              <ListFormDialogClientSection
-                editing={null}
-                isAdmin={isAdmin}
-                activeClients={activeClients}
-                customerClient={customerClient}
-                authClientId={authClientId}
-                watchedClientId={watchedClientId}
-                setValue={setValue as unknown as UseFormSetValue<ListFormValues>}
-                errors={errors}
-              />
-              <NoticeTypeCombobox
-                value={watchedNoticeType ?? ''}
-                onChange={(v) => setValue('noticeType', v, { shouldValidate: true })}
-                knownTypes={formNoticeTypesData}
-                clientScoped
-                error={errors.noticeType?.message}
-                disabled={!formClientId}
-              />
-              <div className="space-y-1.5">
-                <Label>
-                  Notice Name <span className="text-destructive">*</span>
-                </Label>
-                <Input placeholder="e.g. aug-demand-batch" {...register('noticeName')} />
-                {errors.noticeName && (
-                  <p className="text-xs text-destructive">{errors.noticeName.message}</p>
-                )}
-              </div>
-              <ListFormDialogSlugPreview
-                editing={null}
-                generatedSlugPreview={generatedSlugPreview}
-              />
-              <div className="grid grid-cols-2 gap-3">
+
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+            {!replacing && (
+              <>
+                <ListFormDialogClientSection
+                  editing={null}
+                  isAdmin={isAdmin}
+                  activeClients={activeClients}
+                  customerClient={customerClient}
+                  authClientId={authClientId}
+                  watchedClientId={watchedClientId}
+                  setValue={setValue as unknown as UseFormSetValue<ListFormValues>}
+                  errors={errors}
+                />
+                <NoticeTypeCombobox
+                  value={watchedNoticeType ?? ''}
+                  onChange={(v) => setValue('noticeType', v, { shouldValidate: true })}
+                  knownTypes={formNoticeTypesData}
+                  clientScoped
+                  error={errors.noticeType?.message}
+                  disabled={!formClientId}
+                />
                 <div className="space-y-1.5">
                   <Label>
-                    Notice Date <span className="text-destructive">*</span>
+                    Notice Name <span className="text-destructive">*</span>
                   </Label>
-                  <Input type="date" {...register('noticeDate')} />
-                  {errors.noticeDate && (
-                    <p className="text-xs text-destructive">{errors.noticeDate.message}</p>
+                  <Input placeholder="e.g. aug-demand-batch" {...register('noticeName')} />
+                  {errors.noticeName && (
+                    <p className="text-xs text-destructive">{errors.noticeName.message}</p>
                   )}
                 </div>
-                <div className="space-y-1.5">
-                  <Label>
-                    Dispatch Date{' '}
-                    <span className="text-muted-foreground">(optional)</span>
-                  </Label>
-                  <Input type="date" {...register('dispatchDate')} />
+                <ListFormDialogSlugPreview
+                  editing={null}
+                  generatedSlugPreview={generatedSlugPreview}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>
+                      Notice Date <span className="text-destructive">*</span>
+                    </Label>
+                    <Input type="date" {...register('noticeDate')} />
+                    {errors.noticeDate && (
+                      <p className="text-xs text-destructive">{errors.noticeDate.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>
+                      Dispatch Date{' '}
+                      <span className="text-muted-foreground">(optional)</span>
+                    </Label>
+                    <Input type="date" {...register('dispatchDate')} />
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Description</Label>
-                <Input placeholder="Optional notes" {...register('description')} />
-              </div>
-            </>
-          )}
+                <div className="space-y-1.5">
+                  <Label>Description</Label>
+                  <Input placeholder="Optional notes" {...register('description')} />
+                </div>
+              </>
+            )}
 
-          <div className="space-y-1.5">
-            <Label>
-              Upload Excel <span className="text-destructive">*</span>
-            </Label>
-            <NoticeExcelDropZone
-              file={excelFile}
-              onFile={(file) => onExcelFile(file)}
-              onClear={() => onExcelFile(null)}
-            />
+            <div className="space-y-1.5">
+              <Label>
+                Upload Excel <span className="text-destructive">*</span>
+              </Label>
+              <NoticeExcelDropZone
+                file={excelFile}
+                onFile={(file) => onExcelFile(file)}
+                onClear={() => onExcelFile(null)}
+                disabled={validating}
+              />
+              {validating && (
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Validating Excel headers…
+                </p>
+              )}
+            </div>
+
+            {validation && (
+              <SampleExcelValidationReport
+                validation={validation}
+                compact
+                context="production"
+              />
+            )}
+
+            {submitError && (
+              <p className="text-sm text-destructive">{submitError}</p>
+            )}
           </div>
 
-          {validation && <SampleExcelValidationReport validation={validation} />}
-
-          {submitError && (
-            <p className="text-sm text-destructive">{submitError}</p>
-          )}
-
-          <div className="flex justify-end gap-2">
+          <DialogFooter className="shrink-0 gap-2 border-t border-border bg-muted/30 px-4 py-3 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"
@@ -173,7 +193,7 @@ export function NoticeExcelFormDialog({
               )}
               {replacing ? 'Replace Excel' : 'Create Excel'}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
